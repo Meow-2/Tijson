@@ -12,12 +12,14 @@
 
 #define EXPECT_PARSE_THROW_MESSAGE(TEST_CONTENT, TEST_MESSAGE) \
     do {                                                       \
+        std::invalid_argument temp("");                        \
         try {                                                  \
             tijson::parse(TEST_CONTENT);                       \
         }                                                      \
         catch (std::invalid_argument & e) {                    \
-            EXPECT_STREQ(e.what(), TEST_MESSAGE);              \
+            temp = e;                                          \
         }                                                      \
+        EXPECT_STREQ(temp.what(), TEST_MESSAGE);               \
     } while (0)
 
 TEST(PARSE_VALUE, NULL)
