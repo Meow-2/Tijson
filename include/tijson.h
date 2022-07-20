@@ -2,6 +2,7 @@
 #define INCLUDE_TIJSON_H
 
 #include <cassert>
+#include <exception>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -46,10 +47,6 @@ public:
     value(value&&) noexcept = default;
     value& operator=(value&&) noexcept = default;
 
-    // method
-    void       set_type(VALUE_TYPE t) { type = t; }
-    VALUE_TYPE get_type() { return type; }
-
     // type judgment
     bool is_invalid() { return type == VALUE_TYPE::INVALID ? true : false; }
     bool is_null() { return type == VALUE_TYPE::NUL ? true : false; }
@@ -60,11 +57,26 @@ public:
     bool is_array() { return type == VALUE_TYPE::ARRAY ? true : false; }
     bool is_object() { return type == VALUE_TYPE::OBJECT ? true : false; }
 
-    // get value
+    // getter && setter method
+    VALUE_TYPE get_type() { return type; }
+    void       set_type(VALUE_TYPE t) { type = t; }
+
     bool get_bool()
     {
         assert((type == VALUE_TYPE::TRUE || type == VALUE_TYPE::FALSE) && "json value is not bool");
         return type == VALUE_TYPE::TRUE ? true : false;
+    }
+    void set_bool(bool tf) { set_type(tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE); }
+
+    double get_number()
+    {
+        assert(type == VALUE_TYPE::NUMBER && "json value is not number");
+        return std::get<double>(data);
+    }
+    void set_number(double n)
+    {
+        data = n;
+        set_type(VALUE_TYPE::NUMBER);
     }
 
 private:
@@ -185,7 +197,7 @@ value parser::parse()
 value parser::parse_value()
 {
     value result;
-    switch (*cur++) {
+    switch (*cur) {
     case 'n': parse_null(result); break;
     case 't': parse_true(result); break;
     case 'f': parse_false(result); break;
@@ -199,8 +211,8 @@ value parser::parse_value()
 
 void parser::parse_null(value& val)
 {
-    if (cur[0] == 'u' && cur[1] == 'l' && cur[2] == 'l') {
-        cur += 3;
+    if (cur[1] == 'u' && cur[2] == 'l' && cur[3] == 'l') {
+        cur += 4;
         val.set_type(value::VALUE_TYPE::NUL);
     }
     else
@@ -208,8 +220,8 @@ void parser::parse_null(value& val)
 }
 void parser::parse_true(value& val)
 {
-    if (cur[0] == 'r' && cur[1] == 'u' && cur[2] == 'e') {
-        cur += 3;
+    if (cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e') {
+        cur += 4;
         val.set_type(value::VALUE_TYPE::TRUE);
     }
     else
@@ -217,14 +229,57 @@ void parser::parse_true(value& val)
 }
 void parser::parse_false(value& val)
 {
-    if (cur[0] == 'a' && cur[1] == 'l' && cur[2] == 's' && cur[3] == 'e') {
-        cur += 4;
+    if (cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e') {
+        cur += 5;
         val.set_type(value::VALUE_TYPE::FALSE);
     }
     else
         throw std::invalid_argument("INVALID_VALUE");
 }
-void parser::parse_number(value& val) {}
+// TODO:
+void parser::parse_number(value& val)
+{
+    auto iter = cur;
+    if (*iter == '-')
+        ++iter;
+    if (*iter == '0')
+        ++iter;
+    else if (*iter >= '1' && *iter <= '9') {
+        ++iter;
+        while (*iter >= '0' && *iter <= '9')
+            ++iter;
+    }
+    else
+        throw std::invalid_argument("INVALID_VALUE");
+    if (*iter == '.') {
+        ++iter;
+        if (*iter < '0' || *iter > '9')
+            throw std::invalid_argument("INVALID_VALUE");
+        while (*iter >= '0' && *iter <= '9')
+            iter++;
+    }
+    if (*iter == 'e' || *iter == 'E') {
+        ++iter;
+        if (*iter == '+' || *iter == '-')
+            ++iter;
+        if (*iter < '0' || *iter > '9')
+            throw std::invalid_argument("INVALID_VALUE");
+        while (*iter >= '0' && *iter <= '9')
+            ++iter;
+    }
+    if (iter == cur)
+        throw std::invalid_argument("INVALID_VALUE");
+    // if the converted value would fall out of the range, will throw an out_of_range exception
+    double n;
+    try {
+        n = std::stod(cur);
+    }
+    catch (std::out_of_range e) {
+        throw std::invalid_argument("NUMBER_TOO_BIG");
+    }
+    cur = iter;
+    val.set_number(n);
+}
 void parser::parse_string(value& val) {}
 void parser::parse_array(value& val) {}
 void parser::parse_object(value& val) {}
