@@ -2,6 +2,7 @@
 #define INCLUDE_TIJSON_H
 
 #include <cassert>
+#include <cmath>
 #include <exception>
 #include <memory>
 #include <stdexcept>
@@ -270,15 +271,21 @@ void parser::parse_number(value& val)
     if (iter == cur)
         throw std::invalid_argument("INVALID_VALUE");
     // if the converted value would fall out of the range, will throw an out_of_range exception
-    double n;
-    try {
-        n = std::stod(cur);
-    }
-    catch (std::out_of_range e) {
+    // And std::stod() will throw out_of_range exception when converts subnormal value
+    // https://stackoverflow.com/questions/48086830/stdstod-throws-out-of-range-error-for-a-string-that-should-be-valid
+    //
+    // double n;
+    // try {
+    //     n = std::strtod(cur);
+    // }
+    // catch (std::out_of_range e) {
+    //     throw std::invalid_argument("NUMBER_TOO_BIG");
+    // }
+    double n = std::strtod(std::string(cur, iter).c_str(), nullptr);
+    if (n == HUGE_VAL || n == -HUGE_VAL)
         throw std::invalid_argument("NUMBER_TOO_BIG");
-    }
-    cur = iter;
     val.set_number(n);
+    cur = iter;
 }
 void parser::parse_string(value& val) {}
 void parser::parse_array(value& val) {}
