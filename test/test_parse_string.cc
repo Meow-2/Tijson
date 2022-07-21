@@ -5,19 +5,30 @@
 #include <stdexcept>
 #include <tijson.h>
 
-//     TEST_STRING("", "\"\"");
-//     TEST_STRING("Hello", "\"Hello\"");
-// #if 1
-//     TEST_STRING("Hello\nWorld", "\"Hello\\nWorld\"");
-//     TEST_STRING("\" \\ / \b \f \n \r \t", "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
-// TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"");
-// TEST_ERROR(LEPT_PARSE_MISS_QUOTATION_MARK, "\"abc");
-//
-//
-// TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\v\"");
-// TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\'\"");
-// TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\0\"");
-// TEST_ERROR(LEPT_PARSE_INVALID_STRING_ESCAPE, "\"\\x12\"");
-//
-// TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x01\"");
-// TEST_ERROR(LEPT_PARSE_INVALID_STRING_CHAR, "\"\x1F\"");
+
+TEST(PARSE_STRING, STRING)
+{
+    EXPECT_EQ_STRING("\"\"", "");
+    EXPECT_EQ_STRING("\"Hello\"", "Hello");
+    EXPECT_EQ_STRING("\"Hello\\nWorld\"", "Hello\nWorld");
+    EXPECT_EQ_STRING("\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"", "\" \\ / \b \f \n \r \t");
+}
+
+TEST(PARSE_STRING, MISS_QUOTATION_MARK)
+{
+    EXPECT_PARSE_THROW_MESSAGE("\"", "MISS_QUOTATION_MARK");
+    EXPECT_PARSE_THROW_MESSAGE("\"abc", "MISS_QUOTATION_MARK");
+}
+TEST(PARSE_STRING, INVALID_STRING_ESCAPE)
+{
+    EXPECT_PARSE_THROW_MESSAGE("\"\\v\"", "INVALID_STRING_ESCAPE");
+    EXPECT_PARSE_THROW_MESSAGE("\"\\'\"", "INVALID_STRING_ESCAPE");
+    EXPECT_PARSE_THROW_MESSAGE("\"\\0\"", "INVALID_STRING_ESCAPE");
+    EXPECT_PARSE_THROW_MESSAGE("\"\\x12\"", "INVALID_STRING_ESCAPE");
+}
+TEST(PARSE_STRING, INVALID_STRING_CHAR)
+{
+
+    EXPECT_PARSE_THROW_MESSAGE("\"\x01\"", "INVALID_STRING_CHAR");
+    EXPECT_PARSE_THROW_MESSAGE("\"\x1F\"", "INVALID_STRING_CHAR");
+}
