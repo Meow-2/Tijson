@@ -59,17 +59,17 @@ public:
     bool is_object() { return type == VALUE_TYPE::OBJECT ? true : false; }
 
     // getter && setter method
-    VALUE_TYPE get_type() { return type; }
-    void       set_type(VALUE_TYPE t) { type = t; }
+    [[nodiscard]] VALUE_TYPE get_type() const { return type; }
+    void                     set_type(VALUE_TYPE t) { type = t; }
 
-    bool get_bool()
+    [[nodiscard]] bool get_bool() const
     {
         assert((type == VALUE_TYPE::TRUE || type == VALUE_TYPE::FALSE) && "json value is not bool");
         return type == VALUE_TYPE::TRUE ? true : false;
     }
     void set_bool(bool tf) { set_type(tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE); }
 
-    double get_number()
+    [[nodiscard]] double get_number() const
     {
         assert(type == VALUE_TYPE::NUMBER && "json value is not number");
         return std::get<double>(data);
@@ -78,6 +78,17 @@ public:
     {
         data = n;
         set_type(VALUE_TYPE::NUMBER);
+    }
+    [[nodiscard]] std::string get_string() const
+    {
+        assert(type == VALUE_TYPE::STRING && "json value is not string");
+        return std::get<std::string>(data);
+    }
+
+    void set_string(std::string const& s)
+    {
+        data = s;
+        set_type(VALUE_TYPE::STRING);
     }
 
 private:
@@ -287,6 +298,7 @@ void parser::parse_number(value& val)
     val.set_number(n);
     cur = iter;
 }
+// TODO: string parse
 void parser::parse_string(value& val) {}
 void parser::parse_array(value& val) {}
 void parser::parse_object(value& val) {}
