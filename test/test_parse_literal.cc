@@ -2,34 +2,35 @@
 #include "macro_help.h"
 
 #include <gtest/gtest.h>
+#include <gtest/gtest_pred_impl.h>
 #include <stdexcept>
 #include <tijson.h>
 
 TEST(PARSE_LITERAL, NULL)
 {
-    EXPECT_EQ_VALUE_TYPE("null", NUL);
-    EXPECT_EQ_VALUE_TYPE(" null ", NUL);
-    EXPECT_EQ_VALUE_TYPE("null ", NUL);
-    EXPECT_EQ_VALUE_TYPE(" null", NUL);
-    EXPECT_EQ_VALUE_TYPE("\rnull\n\t", NUL);
+    EXPECT_EQ_NULL("null");
+    EXPECT_EQ_NULL(" null ");
+    EXPECT_EQ_NULL("null ");
+    EXPECT_EQ_NULL(" null");
+    EXPECT_EQ_NULL("\rnull\n\t");
 }
 
 TEST(PARSE_LITERAL, TRUE)
 {
-    EXPECT_EQ_VALUE_TYPE("true", TRUE);
-    EXPECT_EQ_VALUE_TYPE(" true ", TRUE);
-    EXPECT_EQ_VALUE_TYPE("true ", TRUE);
-    EXPECT_EQ_VALUE_TYPE(" true", TRUE);
-    EXPECT_EQ_VALUE_TYPE("\rtrue\n\t", TRUE);
+    EXPECT_EQ_TRUE("true");
+    EXPECT_EQ_TRUE(" true ");
+    EXPECT_EQ_TRUE("true ");
+    EXPECT_EQ_TRUE(" true");
+    EXPECT_EQ_TRUE("\rtrue\n\t");
 }
 
 TEST(PARSE_LITERAL, FALSE)
 {
-    EXPECT_EQ_VALUE_TYPE("false", FALSE);
-    EXPECT_EQ_VALUE_TYPE(" false ", FALSE);
-    EXPECT_EQ_VALUE_TYPE("false ", FALSE);
-    EXPECT_EQ_VALUE_TYPE(" false", FALSE);
-    EXPECT_EQ_VALUE_TYPE("\rfalse\n\t", FALSE);
+    EXPECT_EQ_FALSE("false");
+    EXPECT_EQ_FALSE(" false ");
+    EXPECT_EQ_FALSE("false ");
+    EXPECT_EQ_FALSE(" false");
+    EXPECT_EQ_FALSE("\rfalse\n\t");
 }
 
 TEST(PARSE_LITERAL, EXPECT_VALUE)

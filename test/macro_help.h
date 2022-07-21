@@ -1,6 +1,6 @@
-#define EXPECT_EQ_VALUE_TYPE(TEST_CONTENT, TEST_VALUE_TYPE)                        \
+#define EXPECT_EQ_VALUE_TYPE(TEST_VALUE, TEST_VALUE_TYPE)                          \
     do {                                                                           \
-        EXPECT_STREQ(get_str_of_enum(tijson::parse(TEST_CONTENT).get_type()),      \
+        EXPECT_STREQ(get_str_of_enum(TEST_VALUE.get_type()),                       \
                      get_str_of_enum(tijson::value::VALUE_TYPE::TEST_VALUE_TYPE)); \
     } while (0)
 
@@ -16,10 +16,40 @@
         EXPECT_STREQ(temp.what(), TEST_MESSAGE);               \
     } while (0)
 
-#define EXPECT_EQ_NUMBER(TEST_CONTENT, TEST_NUMBER)                       \
-    do {                                                                  \
-        auto v = tijson::parse(TEST_CONTENT);                             \
-        EXPECT_EQ(v.get_number(), TEST_NUMBER);                           \
-        EXPECT_STREQ(get_str_of_enum(v.get_type()),                       \
-                     get_str_of_enum(tijson::value::VALUE_TYPE::NUMBER)); \
+// what does EXPECT_EQ_XXX do ?
+// 1. test parse -> should be right value
+// 2. test access -> should get right type and right value
+
+#define EXPECT_EQ_TRUE(TEST_CONTENT)          \
+    do {                                      \
+        auto v = tijson::parse(TEST_CONTENT); \
+        EXPECT_EQ(v.get_bool(), true);        \
+        EXPECT_EQ_VALUE_TYPE(v, TRUE);        \
+    } while (0)
+
+#define EXPECT_EQ_FALSE(TEST_CONTENT)         \
+    do {                                      \
+        auto v = tijson::parse(TEST_CONTENT); \
+        EXPECT_EQ(v.get_bool(), false);       \
+        EXPECT_EQ_VALUE_TYPE(v, FALSE);       \
+    } while (0)
+
+#define EXPECT_EQ_NULL(TEST_CONTENT)          \
+    do {                                      \
+        auto v = tijson::parse(TEST_CONTENT); \
+        EXPECT_EQ_VALUE_TYPE(v, NUL);         \
+    } while (0)
+
+#define EXPECT_EQ_NUMBER(TEST_CONTENT, TEST_NUMBER) \
+    do {                                            \
+        auto v = tijson::parse(TEST_CONTENT);       \
+        EXPECT_EQ(v.get_number(), TEST_NUMBER);     \
+        EXPECT_EQ_VALUE_TYPE(v, NUMBER);            \
+    } while (0)
+
+#define EXPECT_EQ_STRING(TEST_CONTENT, TEST_STRING) \
+    do {                                            \
+        auto v = tijson::parse(TEST_CONTENT);       \
+        EXPECT_EQ(v.get_string(), TEST_STRING);     \
+        EXPECT_EQ_VALUE_TYPE(v, STRING);            \
     } while (0)
