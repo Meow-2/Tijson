@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <tijson.h>
 
-TEST(PARSE_LITERAL, NULL)
+TEST(PARSE_LITERAL, NUL)
 {
     EXPECT_EQ_NULL("null");
     EXPECT_EQ_NULL(" null ");

@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <tijson.h>
 
-TEST(PARSE_NUMBER, VALID_VALUE)
+TEST(PARSE_NUMBER, NUMBER)
 {
     EXPECT_EQ_NUMBER("0", 0.0);
     EXPECT_EQ_NUMBER("-0", 0.0);
