@@ -9,7 +9,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(GTest REQUIRED)
 
-add_executable(test test/test_parse_literal.cc test/test_parse_number.cc test/tijson.cc)
+file(GLOB_RECURSE TEST_DIR_LIST "test/*.cc")
+add_executable(test ${TEST_DIR_LIST})
+
 target_include_directories(test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if(GTest_FOUND)
