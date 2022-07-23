@@ -85,9 +85,9 @@ public:
         return std::get<std::string>(data);
     }
 
-    void set_string(std::string const& s)
+    void set_string(std::string&& s)
     {
-        data = s;
+        data = std::move(s);
         set_type(VALUE_TYPE::STRING);
     }
 
@@ -141,6 +141,12 @@ private:
     bool is_digital(char ch)
     {
         return ch >= lower && ch <= upper;
+    }
+
+    // parse number helper
+    bool is_unescaped(char ch)
+    {
+        return ch >= '\x20' && ch <= '\x21' || ch >= '\x23' && ch <= '\x5B' || ch >= '\x5D';
     }
 
     str_itr cur;
@@ -304,8 +310,47 @@ void parser::parse_number(value& val)
     val.set_number(n);
 } /*}}}*/
 // TODO: string parse
-void parser::parse_string(value& val) {}
+void parser::parse_string(value& val)
+{
+    std::string s;
+    while (true) {
+        if (cur == end)
+            throw std::invalid_argument("MISS_QUOTATION_MARK");
+        if (*cur == '\"') {
+            ++cur;
+            break;
+        }
+        // deal with escape
+        if (*cur == '\\') {
+            if (++cur == end)
+                throw std::invalid_argument("INVALID_STRING_ESCAPE");
+            switch (*cur++) {
+            case '\"': s.push_back('\"'); break;
+            case '\\': s.push_back('\\'); break;
+            case '/': s.push_back('/'); break;
+            case 'b': s.push_back('\b'); break;
+            case 'f': s.push_back('\f'); break;
+            case 'n': s.push_back('\n'); break;
+            case 'r': s.push_back('\r'); break;
+            case 't': s.push_back('\t'); break;
+            case 'u': break;
+            default: throw std::invalid_argument("INVALID_STRING_ESCAPE");
+            }
+            continue;
+        }
+        // deal with unescape
+        if (is_unescaped(*cur)) {
+            s.push_back(*cur++);
+            continue;
+        }
+        throw std::invalid_argument("INVALID_STRING_CHAR");
+    }
+    val.set_string(std::move(s));
+    return;
+}
+// TODO: array parse
 void parser::parse_array(value& val) {}
+// TODO: object parse
 void parser::parse_object(value& val) {}
 }   // namespace tijson
 #endif   // TIJSON_IMP
