@@ -257,38 +257,38 @@ void parser::parse_false(value& val)
 } /*}}}*/
 void parser::parse_number(value& val)
 { /*{{{*/
-    auto iter = cur;
-    if (*iter == '-')
-        ++iter;
-    if (*iter == '0')
-        ++iter;
-    else if (is_digital<'1', '9'>(*iter)) {
-        ++iter;
-        while (is_digital<'0', '9'>(*iter))
-            ++iter;
+    auto number_begin = cur;
+    if (*cur == '-')
+        ++cur;
+    if (*cur == '0')
+        ++cur;
+    else if (is_digital<'1', '9'>(*cur)) {
+        ++cur;
+        while (is_digital<'0', '9'>(*cur))
+            ++cur;
     }
     else
         throw std::invalid_argument("INVALID_VALUE");
-    if (*iter == '.') {
-        ++iter;
-        if (!is_digital<'0', '9'>(*iter))
+    if (*cur == '.') {
+        ++cur;
+        if (!is_digital<'0', '9'>(*cur))
             throw std::invalid_argument("INVALID_VALUE");
-        while (is_digital<'0', '9'>(*iter))
-            iter++;
+        while (is_digital<'0', '9'>(*cur))
+            cur++;
     }
-    if (*iter == 'e' || *iter == 'E') {
-        ++iter;
-        if (*iter == '+' || *iter == '-')
-            ++iter;
-        if (!is_digital<'0', '9'>(*iter))
+    if (*cur == 'e' || *cur == 'E') {
+        ++cur;
+        if (*cur == '+' || *cur == '-')
+            ++cur;
+        if (!is_digital<'0', '9'>(*cur))
             throw std::invalid_argument("INVALID_VALUE");
-        while (is_digital<'0', '9'>(*iter))
-            ++iter;
+        while (is_digital<'0', '9'>(*cur))
+            ++cur;
     }
-    if (iter == cur)
+    if (number_begin == cur)
         throw std::invalid_argument("INVALID_VALUE");
-    // if the converted value would fall out of the range, will throw an out_of_range exception
-    // And std::stod() will throw out_of_range exception when converts subnormal value
+    // Abort: stod() If the converted value would fall out of the range, will throw an out_of_range
+    // exception And std::stod() will throw out_of_range exception when converts subnormal value
     // https://stackoverflow.com/questions/48086830/stdstod-throws-out-of-range-error-for-a-string-that-should-be-valid
     //
     // double n;
@@ -298,11 +298,10 @@ void parser::parse_number(value& val)
     // catch (std::out_of_range e) {
     //     throw std::invalid_argument("NUMBER_TOO_BIG");
     // }
-    double n = std::strtod(std::string(cur, iter).c_str(), nullptr);
+    double n = std::strtod(std::string(number_begin, cur).c_str(), nullptr);
     if (n == HUGE_VAL || n == -HUGE_VAL)
         throw std::invalid_argument("NUMBER_TOO_BIG");
     val.set_number(n);
-    cur = iter;
 } /*}}}*/
 // TODO: string parse
 void parser::parse_string(value& val) {}
