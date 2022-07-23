@@ -217,12 +217,12 @@ value parser::parse_value()
 {
     value result;
     switch (*cur) {
-    case 'n': parse_null(result); break;
-    case 't': parse_true(result); break;
-    case 'f': parse_false(result); break;
-    case '\"': parse_string(result); break;
-    case '[': parse_array(result); break;
-    case '{': parse_object(result); break;
+    case 'n': ++cur, parse_null(result); break;
+    case 't': ++cur, parse_true(result); break;
+    case 'f': ++cur, parse_false(result); break;
+    case '\"': ++cur, parse_string(result); break;
+    case '[': ++cur, parse_array(result); break;
+    case '{': ++cur, parse_object(result); break;
     default: parse_number(result);
     }
     return result;
@@ -230,8 +230,8 @@ value parser::parse_value()
 
 void parser::parse_null(value& val)
 { /*{{{*/
-    if (cur[1] == 'u' && cur[2] == 'l' && cur[3] == 'l') {
-        cur += 4;
+    if (cur[0] == 'u' && cur[1] == 'l' && cur[2] == 'l') {
+        cur += 3;
         val.set_type(value::VALUE_TYPE::NUL);
         return;
     }
@@ -239,8 +239,8 @@ void parser::parse_null(value& val)
 } /*}}}*/
 void parser::parse_true(value& val)
 { /*{{{*/
-    if (cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e') {
-        cur += 4;
+    if (cur[0] == 'r' && cur[1] == 'u' && cur[2] == 'e') {
+        cur += 3;
         val.set_type(value::VALUE_TYPE::TRUE);
         return;
     }
@@ -248,8 +248,8 @@ void parser::parse_true(value& val)
 } /*}}}*/
 void parser::parse_false(value& val)
 { /*{{{*/
-    if (cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e') {
-        cur += 5;
+    if (cur[0] == 'a' && cur[1] == 'l' && cur[2] == 's' && cur[3] == 'e') {
+        cur += 4;
         val.set_type(value::VALUE_TYPE::FALSE);
         return;
     }
