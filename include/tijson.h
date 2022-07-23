@@ -311,7 +311,7 @@ void parser::parse_number(value& val)
 } /*}}}*/
 // TODO: string parse
 void parser::parse_string(value& val)
-{
+{ /*{{{*/
     std::string s;
     while (true) {
         if (cur == end)
@@ -347,7 +347,7 @@ void parser::parse_string(value& val)
     }
     val.set_string(std::move(s));
     return;
-}
+} /*}}}*/
 // TODO: array parse
 void parser::parse_array(value& val) {}
 // TODO: object parse
