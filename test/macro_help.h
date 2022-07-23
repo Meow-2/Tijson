@@ -1,3 +1,4 @@
+// EXPECT_STREQ is used to compare char const * p
 #define EXPECT_EQ_VALUE_TYPE(TEST_VALUE, TEST_VALUE_TYPE)                          \
     do {                                                                           \
         EXPECT_STREQ(get_str_of_enum(TEST_VALUE.get_type()),                       \
