@@ -233,27 +233,27 @@ void parser::parse_null(value& val)
     if (cur[1] == 'u' && cur[2] == 'l' && cur[3] == 'l') {
         cur += 4;
         val.set_type(value::VALUE_TYPE::NUL);
+        return;
     }
-    else
-        throw std::invalid_argument("INVALID_VALUE");
+    throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 void parser::parse_true(value& val)
 { /*{{{*/
     if (cur[1] == 'r' && cur[2] == 'u' && cur[3] == 'e') {
         cur += 4;
         val.set_type(value::VALUE_TYPE::TRUE);
+        return;
     }
-    else
-        throw std::invalid_argument("INVALID_VALUE");
+    throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 void parser::parse_false(value& val)
 { /*{{{*/
     if (cur[1] == 'a' && cur[2] == 'l' && cur[3] == 's' && cur[4] == 'e') {
         cur += 5;
         val.set_type(value::VALUE_TYPE::FALSE);
+        return;
     }
-    else
-        throw std::invalid_argument("INVALID_VALUE");
+    throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 void parser::parse_number(value& val)
 { /*{{{*/
