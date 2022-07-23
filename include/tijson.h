@@ -136,6 +136,13 @@ private:
             cur++;
     }
 
+    // parse number helper
+    template<char lower, char upper>
+    bool is_digital(char ch)
+    {
+        return ch >= lower && ch <= upper;
+    }
+
     str_itr cur;
     str_itr end;
 };
@@ -248,7 +255,6 @@ void parser::parse_false(value& val)
     else
         throw std::invalid_argument("INVALID_VALUE");
 }
-// TODO:
 void parser::parse_number(value& val)
 {
     auto iter = cur;
@@ -256,27 +262,27 @@ void parser::parse_number(value& val)
         ++iter;
     if (*iter == '0')
         ++iter;
-    else if (*iter >= '1' && *iter <= '9') {
+    else if (is_digital<'1', '9'>(*iter)) {
         ++iter;
-        while (*iter >= '0' && *iter <= '9')
+        while (is_digital<'0', '9'>(*iter))
             ++iter;
     }
     else
         throw std::invalid_argument("INVALID_VALUE");
     if (*iter == '.') {
         ++iter;
-        if (*iter < '0' || *iter > '9')
+        if (!is_digital<'0', '9'>(*iter))
             throw std::invalid_argument("INVALID_VALUE");
-        while (*iter >= '0' && *iter <= '9')
+        while (is_digital<'0', '9'>(*iter))
             iter++;
     }
     if (*iter == 'e' || *iter == 'E') {
         ++iter;
         if (*iter == '+' || *iter == '-')
             ++iter;
-        if (*iter < '0' || *iter > '9')
+        if (!is_digital<'0', '9'>(*iter))
             throw std::invalid_argument("INVALID_VALUE");
-        while (*iter >= '0' && *iter <= '9')
+        while (is_digital<'0', '9'>(*iter))
             ++iter;
     }
     if (iter == cur)
