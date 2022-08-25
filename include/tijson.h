@@ -164,9 +164,9 @@ private:
             if ('0' <= *cur && *cur <= '9')
                 surrogate |= *cur - '0';
             else if ('a' <= *cur && *cur <= 'f')
-                surrogate |= *cur - 'a';
+                surrogate |= *cur - ('a' - 10);
             else if ('A' <= *cur && *cur <= 'F')
-                surrogate |= *cur - 'A';
+                surrogate |= *cur - ('A' - 10);
             else
                 throw std::invalid_argument("INVALID_UNICODE_HEX");
             ++cur;
@@ -179,11 +179,15 @@ private:
         std::u16string u16;
         char16_t       surrogate_h = parse_string_hex4();
         u16 += surrogate_h;
-        if (cur[0] != '\\' || cur[1] != 'u')
-            throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
-        cur += 2;
-        char16_t surrogate_l = parse_string_hex4();
-        u16 += surrogate_l;
+        if (0xD800 <= surrogate_h && surrogate_h <= 0xDBFF) {
+            if (cur[0] != '\\' || cur[1] != 'u')
+                throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
+            cur += 2;
+            char16_t surrogate_l = parse_string_hex4();
+            if (surrogate_l < 0xDC00 || 0xDFFF < surrogate_l)
+                throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
+            u16 += surrogate_l;
+        }
         std::string u8_conv =
             std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(u16);
         return u8_conv;
@@ -205,7 +209,7 @@ inline value parse(std::string_view content)
 #endif   // INCLUDE_TIJSON_H
 
 // WARN: comment the marco when test
-#define TIJSON_IMP
+// #define TIJSON_IMP
 #ifdef TIJSON_IMP
 // --------------------------------------------------------------
 // -                      IMPLEMENTATION                        -
@@ -274,35 +278,38 @@ value parser::parse_value()
     return result;
 }
 
-void parser::parse_null(value& val)
-{ /*{{{*/
+void parser::parse_null(value& val)   //{{{
+{
     if (cur[0] == 'u' && cur[1] == 'l' && cur[2] == 'l') {
         cur += 3;
         val.set_type(value::VALUE_TYPE::NUL);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-} /*}}}*/
-void parser::parse_true(value& val)
-{ /*{{{*/
+}   //}}}
+
+void parser::parse_true(value& val)   //{{{
+{
     if (cur[0] == 'r' && cur[1] == 'u' && cur[2] == 'e') {
         cur += 3;
         val.set_type(value::VALUE_TYPE::TRUE);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-} /*}}}*/
-void parser::parse_false(value& val)
-{ /*{{{*/
+}   //}}}
+
+void parser::parse_false(value& val)   //{{{
+{
     if (cur[0] == 'a' && cur[1] == 'l' && cur[2] == 's' && cur[3] == 'e') {
         cur += 4;
         val.set_type(value::VALUE_TYPE::FALSE);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-} /*}}}*/
-void parser::parse_number(value& val)
-{ /*{{{*/
+}   //}}}
+
+void parser::parse_number(value& val)   //{{{
+{
     auto number_begin = cur;
     if (*cur == '-')
         ++cur;
@@ -348,9 +355,9 @@ void parser::parse_number(value& val)
     if (n == HUGE_VAL || n == -HUGE_VAL)
         throw std::invalid_argument("NUMBER_TOO_BIG");
     val.set_number(n);
-} /*}}}*/
-// TODO: string parse
-void parser::parse_string(value& val)
+}   //}}}
+
+void parser::parse_string(value& val)   //{{{
 {
     std::string s;
     while (true) {
@@ -391,7 +398,7 @@ void parser::parse_string(value& val)
     }
     val.set_string(std::move(s));
     return;
-}
+}   //}}}
 // TODO: array parse
 void parser::parse_array(value& val) {}
 // TODO: object parse

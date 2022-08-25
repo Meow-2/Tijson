@@ -8,11 +8,15 @@
 
 TEST(PARSE_STRING, STRING)
 {
+    std::string HelloWorld;
+    HelloWorld += "Hello";
+    HelloWorld += '\0';
+    HelloWorld += "World";
     EXPECT_EQ_STRING("\"\"", "");
     EXPECT_EQ_STRING("\"Hello\"", "Hello");
     EXPECT_EQ_STRING("\"Hello\\nWorld\"", "Hello\nWorld");
     EXPECT_EQ_STRING("\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"", "\" \\ / \b \f \n \r \t");
-    EXPECT_EQ_STRING("\"Hello\\u0000World\"", "Hello\0World");
+    EXPECT_EQ_STRING("\"Hello\\u0000World\"", HelloWorld);
     EXPECT_EQ_STRING("\"\\u0024\"", "\x24");                    /* Dollar sign U+0024 */
     EXPECT_EQ_STRING("\"\\u00A2\"", "\xC2\xA2");                /* Cents sign U+00A2 */
     EXPECT_EQ_STRING("\"\\u20AC\"", "\xE2\x82\xAC");            /* Euro sign U+20AC */
