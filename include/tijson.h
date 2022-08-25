@@ -3,7 +3,9 @@
 
 #include <cassert>
 #include <cmath>
+#include <codecvt>
 #include <exception>
+#include <locale>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -45,7 +47,7 @@ public:
     // value& operator=(value const& rhs) = delete;
 
     // move constructor
-    value(value&&) noexcept = default;
+    value(value&&) noexcept            = default;
     value& operator=(value&&) noexcept = default;
 
     // type judgment
@@ -103,7 +105,7 @@ class parser final
 
 public:
     // delete copy
-    parser(parser const&) = delete;
+    parser(parser const&)            = delete;
     parser& operator=(parser const&) = delete;
     // destructor
     ~parser() = default;
@@ -144,9 +146,47 @@ private:
     }
 
     // parse number helper
-    bool is_unescaped(char ch)
+    bool is_invalid_char(char ch)
     {
-        return ch >= '\x20' && ch <= '\x21' || ch >= '\x23' && ch <= '\x5B' || ch >= '\x5D';
+        // unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
+        // '\x22' is '\"' , '\x5C' is '\\' , they will be deal, so the invalid char is less than
+        // '\x20' unsigned char : range[0,255], signed char : range[-127,127]
+        // When calulate char with number should static_cast
+        // Because char could be unsigned or signed in different compiler
+        return static_cast<unsigned char>(ch) < '\x20';
+    }
+    // parse unicode helper
+    char16_t parse_string_hex4()
+    {
+        char16_t surrogate = 0;
+        for (int i = 0; i < 4; i++) {
+            surrogate <<= 4;
+            if ('0' <= *cur && *cur <= '9')
+                surrogate |= *cur - '0';
+            else if ('a' <= *cur && *cur <= 'f')
+                surrogate |= *cur - 'a';
+            else if ('A' <= *cur && *cur <= 'F')
+                surrogate |= *cur - 'A';
+            else
+                throw std::invalid_argument("INVALID_UNICODE_HEX");
+            ++cur;
+        }
+        return surrogate;
+    }
+
+    std::string parse_string_utf8()
+    {
+        std::u16string u16;
+        char16_t       surrogate_h = parse_string_hex4();
+        u16 += surrogate_h;
+        if (cur[0] != '\\' || cur[1] != 'u')
+            throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
+        cur += 2;
+        char16_t surrogate_l = parse_string_hex4();
+        u16 += surrogate_l;
+        std::string u8_conv =
+            std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(u16);
+        return u8_conv;
     }
 
     str_itr cur;
@@ -164,8 +204,8 @@ inline value parse(std::string_view content)
 
 #endif   // INCLUDE_TIJSON_H
 
-
-// #define TIJSON_IMP
+// WARN: comment the marco when test
+#define TIJSON_IMP
 #ifdef TIJSON_IMP
 // --------------------------------------------------------------
 // -                      IMPLEMENTATION                        -
@@ -311,11 +351,14 @@ void parser::parse_number(value& val)
 } /*}}}*/
 // TODO: string parse
 void parser::parse_string(value& val)
-{ /*{{{*/
+{
     std::string s;
     while (true) {
         if (cur == end)
             throw std::invalid_argument("MISS_QUOTATION_MARK");
+        // deal with invalid char
+        if (is_invalid_char(*cur))
+            throw std::invalid_argument("INVALID_STRING_CHAR");
         if (*cur == '\"') {
             ++cur;
             break;
@@ -333,21 +376,22 @@ void parser::parse_string(value& val)
             case 'n': s.push_back('\n'); break;
             case 'r': s.push_back('\r'); break;
             case 't': s.push_back('\t'); break;
-            case 'u': break;
+            case 'u':
+            {
+                std::string u8stirng = parse_string_utf8();
+                s += u8stirng;
+                break;
+            }
             default: throw std::invalid_argument("INVALID_STRING_ESCAPE");
             }
             continue;
         }
-        // deal with unescape
-        if (is_unescaped(*cur)) {
-            s.push_back(*cur++);
-            continue;
-        }
-        throw std::invalid_argument("INVALID_STRING_CHAR");
+        // deal with unescape char
+        s.push_back(*cur++);
     }
     val.set_string(std::move(s));
     return;
-} /*}}}*/
+}
 // TODO: array parse
 void parser::parse_array(value& val) {}
 // TODO: object parse
