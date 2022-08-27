@@ -5,6 +5,7 @@
 #include <cmath>
 #include <codecvt>
 #include <exception>
+#include <iomanip>
 #include <locale>
 #include <memory>
 #include <stdexcept>
@@ -21,8 +22,10 @@ namespace tijson {
 class value final
 {
     // alias
-    using array_ptr  = std::unique_ptr<std::vector<value>>;
-    using object_ptr = std::unique_ptr<std::unordered_map<std::string, value>>;
+    using array       = std::vector<value>;
+    using object      = std::unordered_map<std::string, value>;
+    using array_uptr  = std::unique_ptr<array>;
+    using object_uptr = std::unique_ptr<object>;
 
 public:
     // the type of json value
@@ -93,9 +96,23 @@ public:
         set_type(VALUE_TYPE::STRING);
     }
 
+    void set_array(array&& arr)
+    {
+        data = std::make_unique<array>(std::move(arr));
+        set_type(VALUE_TYPE::ARRAY);
+    }
+    // [[nodiscard]] value get_element(int index) const {
+    //
+    // }
+    void set_object(object&& obj)
+    {
+        data = std::make_unique<object>(std::move(obj));
+        set_type(VALUE_TYPE::OBJECT);
+    }
+
 private:
-    std::variant<std::string, double, array_ptr, object_ptr> data;
-    VALUE_TYPE                                               type{VALUE_TYPE::NUL};
+    std::variant<std::string, double, array_uptr, object_uptr> data;
+    VALUE_TYPE                                                 type{VALUE_TYPE::NUL};
 };
 
 class parser final
@@ -209,7 +226,7 @@ inline value parse(std::string_view content)
 #endif   // INCLUDE_TIJSON_H
 
 // WARN: comment the marco when test
-// #define TIJSON_IMP
+#define TIJSON_IMP
 #ifdef TIJSON_IMP
 // --------------------------------------------------------------
 // -                      IMPLEMENTATION                        -
@@ -399,9 +416,64 @@ void parser::parse_string(value& val)   //{{{
     val.set_string(std::move(s));
     return;
 }   //}}}
-// TODO: array parse
-void parser::parse_array(value& val) {}
-// TODO: object parse
-void parser::parse_object(value& val) {}
+
+void parser::parse_array(value& val)   //{{{
+{
+    std::vector<value> result;
+    parse_whitespace();
+    if (*cur != ']') {
+        while (true) {
+            result.emplace_back(std::move(parse_value()));
+            parse_whitespace();
+            if (*cur == ',') {
+                ++cur;
+                parse_whitespace();
+                continue;
+            }
+            if (*cur == ']')
+                break;
+            throw std::invalid_argument("MISS_COMMA_OR_SQUARE_BRACKET");
+        }
+    }
+    ++cur;
+    val.set_array(std::move(result));
+    return;
+}   //}}}
+
+void parser::parse_object(value& val)   //{{{
+{
+    std::unordered_map<std::string, value> result;
+    parse_whitespace();
+    if (*cur != '}') {
+        while (true) {
+            if (*cur != '\"')
+                throw std::invalid_argument("MISS_KEY");
+            ++cur;
+            value string_val;
+            parse_string(string_val);
+            std::string key = std::move(string_val.get_string());
+            parse_whitespace();
+            if (*cur != ':')
+                throw std::invalid_argument("MISS_COLON");
+            ++cur;
+            parse_whitespace();
+            value val              = parse_value();
+            result[std::move(key)] = std::move(val);
+            parse_whitespace();
+            if (*cur == ',') {
+                ++cur;
+                parse_whitespace();
+                continue;
+            }
+            if (*cur == '}')
+                break;
+            throw std::invalid_argument("MISS_COMMA_OR_CURLY_BRACKET");
+        }
+    }
+    ++cur;
+    val.set_object(std::move(result));
+    return;
+}   //}}}
+
 }   // namespace tijson
 #endif   // TIJSON_IMP
