@@ -1,8 +1,13 @@
+#include <gtest/gtest.h>
+#include <magic_enum.hpp>
+#include <stdexcept>
+#include <tijson.h>
+
 // EXPECT_STREQ is used to compare char const * p
-#define EXPECT_EQ_VALUE_TYPE(TEST_VALUE, TEST_VALUE_TYPE)                          \
-    do {                                                                           \
-        EXPECT_STREQ(get_str_of_enum(TEST_VALUE.get_type()),                       \
-                     get_str_of_enum(tijson::value::VALUE_TYPE::TEST_VALUE_TYPE)); \
+#define EXPECT_EQ_VALUE_TYPE(TEST_VALUE, TEST_VALUE_TYPE)                             \
+    do {                                                                              \
+        EXPECT_EQ(magic_enum::enum_name(TEST_VALUE.get_type()),                       \
+                  magic_enum::enum_name(tijson::value::VALUE_TYPE::TEST_VALUE_TYPE)); \
     } while (0)
 
 #define EXPECT_PARSE_THROW_MESSAGE(TEST_CONTENT, TEST_MESSAGE) \
@@ -53,4 +58,12 @@
         auto v = tijson::parse(TEST_CONTENT);       \
         EXPECT_EQ(v.get_string(), TEST_STRING);     \
         EXPECT_EQ_VALUE_TYPE(v, STRING);            \
+    } while (0)
+
+#define EXPECT_EQ_ARRAY(TEST_CONTENT, TEST_STRING) \
+    do {                                           \
+        auto v   = tijson::parse(TEST_CONTENT);    \
+        auto arr = v.get_array();                  \
+        EXPECT_EQ(v.get_array(), TEST_STRING);     \
+        EXPECT_EQ_VALUE_TYPE(v, STRING);           \
     } while (0)

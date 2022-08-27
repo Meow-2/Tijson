@@ -1,7 +1,6 @@
-#include "enum_help.h"
-#include "macro_help.h"
+#include "test_utils.h"
 
-#include <gtest/gtest.h>
+
 #include <gtest/gtest_pred_impl.h>
 #include <stdexcept>
 #include <tijson.h>

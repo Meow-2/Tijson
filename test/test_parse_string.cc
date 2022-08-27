@@ -1,9 +1,4 @@
-#include "enum_help.h"
-#include "macro_help.h"
-
-#include <gtest/gtest.h>
-#include <stdexcept>
-#include <tijson.h>
+#include "test_utils.h"
 
 
 TEST(PARSE_STRING, STRING)

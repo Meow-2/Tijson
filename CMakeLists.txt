@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
+set(CMAKE_TOOLCHAIN_FILE
+    "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+    CACHE STRING "Vcpkg toolchain file")
+
 project(Tijson VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -23,13 +27,28 @@ add_executable(test ${TEST_DIR_LIST})
 
 target_include_directories(test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-find_package(GTest REQUIRED)
+# packages
+find_package(GTest CONFIG REQUIRED)
 
 if(GTest_FOUND)
-  target_link_libraries(test GTest::gtest GTest::gtest_main)
+  target_link_libraries(test PRIVATE GTest::gtest GTest::gtest_main)
 else(GTest_FOUND)
-  message(FATAL_ERROR ”GTest library not found”)
+  message(FATAL_ERROR "GTest library not found")
 endif(GTest_FOUND)
+
+find_package(magic_enum CONFIG REQUIRED)
+if(magic_enum_FOUND)
+  target_link_libraries(test PRIVATE magic_enum::magic_enum)
+else(magic_enum_FOUND)
+  message(FATAL_ERROR "magic_enum library not found")
+endif(magic_enum_FOUND)
+
+find_package(spdlog CONFIG REQUIRED)
+if(spdlog_FOUND)
+  target_link_libraries(test PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
+else(spdlog_FOUND)
+  message(FATAL_ERROR "spdlog library not found")
+endif(spdlog_FOUND)
 
 if(NOT MSVC)
   find_program(CCACHE_PROGRAM ccache)
