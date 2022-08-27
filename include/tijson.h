@@ -46,8 +46,23 @@ public:
     value() = default;
 
     // copy constructor(custom)
-    // value(value const& rhs) = delete;
-    // value& operator=(value const& rhs) = delete;
+    value(value const& rhs)
+    {
+        this->type = rhs.type;
+        if (rhs.type == VALUE_TYPE::ARRAY)
+            this->data = std::make_unique<array>(*std::get<array_uptr>(rhs.data));
+        else if (rhs.type == VALUE_TYPE::OBJECT)
+            this->data = std::make_unique<object>(*std::get<object_uptr>(rhs.data));
+        else if (rhs.type == VALUE_TYPE::NUMBER)
+            this->data = std::get<double>(rhs.data);
+        else if (rhs.type == VALUE_TYPE::STRING)
+            this->data = std::get<std::string>(rhs.data);
+    }
+    value& operator=(value const& rhs)
+    {
+        this->~value();
+        return *(new (this) value(rhs));
+    }
 
     // move constructor
     value(value&&) noexcept            = default;
