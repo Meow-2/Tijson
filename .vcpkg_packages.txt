@@ -1,0 +1,3 @@
+gtest
+magic-enum
+spdlog
