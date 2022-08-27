@@ -31,14 +31,14 @@ public:
     // the type of json value
     enum class VALUE_TYPE : char
     {
-        NUL,
-        TRUE,
-        FALSE,
-        STRING,
-        NUMBER,
-        ARRAY,
-        OBJECT,
-        INVALID,
+        NUL     = 'n',
+        TRUE    = 'T',
+        FALSE   = 'F',
+        STRING  = 'S',
+        NUMBER  = 'N',
+        ARRAY   = 'A',
+        OBJECT  = 'O',
+        INVALID = 'I',
     };
 
 public:
