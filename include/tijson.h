@@ -116,13 +116,27 @@ public:
         data = std::make_unique<array>(std::move(arr));
         set_type(VALUE_TYPE::ARRAY);
     }
-    // [[nodiscard]] value get_element(int index) const {
-    //
-    // }
+
+    [[nodiscard]] array get_array() const
+    {
+        array arr;
+        if (std::get<array_uptr>(data))
+            arr = *std::get<array_uptr>(data);
+        return arr;
+    }
+
     void set_object(object&& obj)
     {
         data = std::make_unique<object>(std::move(obj));
         set_type(VALUE_TYPE::OBJECT);
+    }
+
+    [[nodiscard]] object get_object() const
+    {
+        object obj;
+        if (std::get<object_uptr>(data))
+            obj = *std::get<object_uptr>(data);
+        return obj;
     }
 
 private:
@@ -241,7 +255,7 @@ inline value parse(std::string_view content)
 #endif   // INCLUDE_TIJSON_H
 
 // WARN: comment the marco when test
-#define TIJSON_IMP
+// #define TIJSON_IMP
 #ifdef TIJSON_IMP
 // --------------------------------------------------------------
 // -                      IMPLEMENTATION                        -
