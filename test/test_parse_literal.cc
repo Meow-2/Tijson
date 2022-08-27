@@ -1,10 +1,5 @@
 #include "test_utils.h"
 
-
-#include <gtest/gtest_pred_impl.h>
-#include <stdexcept>
-#include <tijson.h>
-
 TEST(PARSE_LITERAL, NUL)
 {
     EXPECT_EQ_NULL("null");
