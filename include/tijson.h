@@ -262,21 +262,6 @@ inline value parse(std::string_view content)
 // --------------------------------------------------------------
 namespace tijson {
 
-
-// --------------------------------------------------------------
-// -                   VALUE IMPLEMENTATION                     -
-// --------------------------------------------------------------
-// value::value(value const& rhs)
-// {
-//     // TODO: deep copy
-// }
-// value& value::operator=(value const& rhs)
-// {
-//     // TODO: deep copy
-//     return *this;
-// }
-
-
 // --------------------------------------------------------------
 // -                   PARSER IMPLEMENTATION                    -
 // --------------------------------------------------------------
