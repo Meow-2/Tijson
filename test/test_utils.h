@@ -60,10 +60,32 @@
         EXPECT_EQ_VALUE_TYPE(v, STRING);            \
     } while (0)
 
-#define EXPECT_EQ_ARRAY(TEST_CONTENT, TEST_STRING) \
-    do {                                           \
-        auto v   = tijson::parse(TEST_CONTENT);    \
-        auto arr = v.get_array();                  \
-        EXPECT_EQ(v.get_array(), TEST_STRING);     \
-        EXPECT_EQ_VALUE_TYPE(v, STRING);           \
+
+#define EXPECT_VALUE_EQ_TRUE(v)        \
+    do {                               \
+        EXPECT_EQ(v.get_bool(), true); \
+        EXPECT_EQ_VALUE_TYPE(v, TRUE); \
+    } while (0)
+
+#define EXPECT_VALUE_EQ_FALSE(v)        \
+    do {                                \
+        EXPECT_EQ(v.get_bool(), false); \
+        EXPECT_EQ_VALUE_TYPE(v, FALSE); \
+    } while (0)
+
+#define EXPECT_VALUE_EQ_NULL(v)       \
+    do {                              \
+        EXPECT_EQ_VALUE_TYPE(v, NUL); \
+    } while (0)
+
+#define EXPECT_VALUE_EQ_NUMBER(v, TEST_NUMBER)  \
+    do {                                        \
+        EXPECT_EQ(v.get_number(), TEST_NUMBER); \
+        EXPECT_EQ_VALUE_TYPE(v, NUMBER);        \
+    } while (0)
+
+#define EXPECT_VALUE_EQ_STRING(v, TEST_STRING)  \
+    do {                                        \
+        EXPECT_EQ(v.get_string(), TEST_STRING); \
+        EXPECT_EQ_VALUE_TYPE(v, STRING);        \
     } while (0)
