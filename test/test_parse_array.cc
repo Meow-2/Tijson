@@ -1,6 +1,6 @@
 #include "test_utils.h"
 
-TEST(PARSE_ARRAY, ARRAY0)
+TEST(PARSE_ARRAY, ARRAY)
 {
     auto v           = tijson::parse("[ ]");
     auto v_deep_copy = v;
