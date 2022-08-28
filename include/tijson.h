@@ -178,6 +178,9 @@ private:
     void  parse_array(value&);
     void  parse_object(value&);
 
+    // parse raw string
+    std::string parse_string();
+
     void parse_whitespace()
     {
         while (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')
@@ -388,6 +391,48 @@ void parser::parse_number(value& val)   //{{{
     val.set_number(n);
 }   //}}}
 
+std::string parser::parse_string()   //{{{
+{
+    std::string s;
+    while (true) {
+        if (cur == end)
+            throw std::invalid_argument("MISS_QUOTATION_MARK");
+        // deal with invalid char
+        if (is_invalid_char(*cur))
+            throw std::invalid_argument("INVALID_STRING_CHAR");
+        if (*cur == '\"') {
+            ++cur;
+            break;
+        }
+        // deal with escape
+        if (*cur == '\\') {
+            if (++cur == end)
+                throw std::invalid_argument("INVALID_STRING_ESCAPE");
+            switch (*cur++) {
+            case '\"': s.push_back('\"'); break;
+            case '\\': s.push_back('\\'); break;
+            case '/': s.push_back('/'); break;
+            case 'b': s.push_back('\b'); break;
+            case 'f': s.push_back('\f'); break;
+            case 'n': s.push_back('\n'); break;
+            case 'r': s.push_back('\r'); break;
+            case 't': s.push_back('\t'); break;
+            case 'u':
+            {
+                std::string u8stirng = parse_string_utf8();
+                s += u8stirng;
+                break;
+            }
+            default: throw std::invalid_argument("INVALID_STRING_ESCAPE");
+            }
+            continue;
+        }
+        // deal with unescape char
+        s.push_back(*cur++);
+    }
+    return s;
+}   //}}}
+
 void parser::parse_string(value& val)   //{{{
 {
     std::string s;
@@ -463,9 +508,7 @@ void parser::parse_object(value& val)   //{{{
             if (*cur != '\"')
                 throw std::invalid_argument("MISS_KEY");
             ++cur;
-            value string_val;
-            parse_string(string_val);
-            std::string key = std::move(string_val.get_string());
+            std::string key = parse_string();
             parse_whitespace();
             if (*cur != ':')
                 throw std::invalid_argument("MISS_COLON");
