@@ -1,4 +1,0 @@
-fmt
-gtest
-magic-enum
-spdlog
