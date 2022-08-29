@@ -20,10 +20,10 @@ namespace tijson {
 
 /*  NOTE: CLASS VALUE */
 
-class value final
+class Value final
 {
-    using array       = std::vector<value>;
-    using object      = std::unordered_map<std::string, value>;
+    using array       = std::vector<Value>;
+    using object      = std::unordered_map<std::string, Value>;
     using array_uptr  = std::unique_ptr<array>;
     using object_uptr = std::unique_ptr<object>;
 
@@ -42,24 +42,24 @@ public:
     };
 
 public:
-    value() = default;
+    Value() = default;
 
     // deep copy
-    value(value const& rhs);
-    value& operator=(value const& rhs);
+    Value(Value const& rhs);
+    Value& operator=(Value const& rhs);
 
-    value(value&&) noexcept            = default;
-    value& operator=(value&&) noexcept = default;
+    Value(Value&&) noexcept            = default;
+    Value& operator=(Value&&) noexcept = default;
 
     /* type check */
-    bool is_invalid() { return type == VALUE_TYPE::INVALID ? true : false; }
-    bool is_null() { return type == VALUE_TYPE::NUL ? true : false; }
-    bool is_true() { return type == VALUE_TYPE::TRUE ? true : false; }
-    bool is_false() { return type == VALUE_TYPE::FALSE ? true : false; }
-    bool is_number() { return type == VALUE_TYPE::NUMBER ? true : false; }
-    bool is_string() { return type == VALUE_TYPE::STRING ? true : false; }
-    bool is_array() { return type == VALUE_TYPE::ARRAY ? true : false; }
-    bool is_object() { return type == VALUE_TYPE::OBJECT ? true : false; }
+    bool is_invalid() { return type_ == VALUE_TYPE::INVALID ? true : false; }
+    bool is_null() { return type_ == VALUE_TYPE::NUL ? true : false; }
+    bool is_true() { return type_ == VALUE_TYPE::TRUE ? true : false; }
+    bool is_false() { return type_ == VALUE_TYPE::FALSE ? true : false; }
+    bool is_number() { return type_ == VALUE_TYPE::NUMBER ? true : false; }
+    bool is_string() { return type_ == VALUE_TYPE::STRING ? true : false; }
+    bool is_array() { return type_ == VALUE_TYPE::ARRAY ? true : false; }
+    bool is_object() { return type_ == VALUE_TYPE::OBJECT ? true : false; }
 
     /* getter setter */
     [[nodiscard]] VALUE_TYPE  get_type() const;
@@ -77,9 +77,9 @@ public:
     void set_object(object&&);
 
     /* value to json string */
-    [[nodiscard]] std::string stringify() const;
+    [[nodiscard]] std::string Stringify() const;
 
-    bool operator==(value const& rhs) const;
+    bool operator==(Value const& rhs) const;
 
 private:
     /* stringify utils */
@@ -89,45 +89,45 @@ private:
     [[nodiscard]] std::string stringify_object() const;
     [[nodiscard]] std::string stringify_string(const std::string&) const;
 
-    std::variant<double, std::string, array_uptr, object_uptr> data{0.0};
-    VALUE_TYPE                                                 type{VALUE_TYPE::INVALID};
+    std::variant<double, std::string, array_uptr, object_uptr> data_{0.0};
+    VALUE_TYPE                                                 type_{VALUE_TYPE::INVALID};
 };
 
 /* NOTE: CLASS PARSER */
 
-class parser final
+class Parser final
 {
     using str_itr = std::string_view::iterator;
 
 public:
     /* copy deleted */
-    parser(parser const&)            = delete;
-    parser& operator=(parser const&) = delete;
+    Parser(Parser const&)            = delete;
+    Parser& operator=(Parser const&) = delete;
 
     /* move undeclared */
 
-    ~parser() = default;
+    ~Parser() = default;
 
     /* parse content to json value */
-    static value parse(std::string_view content);
+    static Value Parse(std::string_view content);
 
 private:
     /* constructor private */
-    parser(str_itr const& b, str_itr const& e) : cur(b), end(e) {}
+    Parser(str_itr cur, str_itr end) : cur_(cur), end_(end) {}
 
     /* real parse */
-    value parse();
+    Value Parse();
 
     /* parse utils */
-    value parse_value();
+    Value parse_value();
     void  parse_whitespace();
-    void  parse_null(value&);
-    void  parse_true(value&);
-    void  parse_false(value&);
-    void  parse_number(value&);
-    void  parse_string(value&);
-    void  parse_array(value&);
-    void  parse_object(value&);
+    void  parse_null(Value&);
+    void  parse_true(Value&);
+    void  parse_false(Value&);
+    void  parse_number(Value&);
+    void  parse_string(Value&);
+    void  parse_array(Value&);
+    void  parse_object(Value&);
 
     /* parse string, return raw string */
     std::string parse_string();
@@ -145,116 +145,125 @@ private:
     std::string parse_string_utf8();
 
     /* data */
-    str_itr cur;
-    str_itr end;
+    str_itr cur_;
+    str_itr end_;
 };
 
+/* NOTE: PARSER EXCEPTION */
+
 /* parse json string to value, if failed, throw an exception */
-static value parse(std::string_view content)
+static Value parse(std::string_view content)
 {
-    return parser::parse(content);
+    Value result;
+    try {
+        result = Parser::Parse(content);
+    }
+    catch (std::invalid_argument e) {
+        e.what();
+    }
+    return result;
 }
 
 /* NOTE: VALUE IMPLEMENTATION */
-inline value::value(value const& rhs) /*{{{*/
+inline Value::Value(Value const& rhs) /*{{{*/
 {
-    this->type = rhs.type;
-    if (rhs.type == VALUE_TYPE::ARRAY)
-        this->data = std::make_unique<array>(*std::get<array_uptr>(rhs.data));
-    else if (rhs.type == VALUE_TYPE::OBJECT)
-        this->data = std::make_unique<object>(*std::get<object_uptr>(rhs.data));
-    else if (rhs.type == VALUE_TYPE::NUMBER)
-        this->data = std::get<double>(rhs.data);
-    else if (rhs.type == VALUE_TYPE::STRING)
-        this->data = std::get<std::string>(rhs.data);
+    this->type_ = rhs.type_;
+    if (rhs.type_ == VALUE_TYPE::ARRAY)
+        this->data_ = std::make_unique<array>(*std::get<array_uptr>(rhs.data_));
+    else if (rhs.type_ == VALUE_TYPE::OBJECT)
+        this->data_ = std::make_unique<object>(*std::get<object_uptr>(rhs.data_));
+    else if (rhs.type_ == VALUE_TYPE::NUMBER)
+        this->data_ = std::get<double>(rhs.data_);
+    else if (rhs.type_ == VALUE_TYPE::STRING)
+        this->data_ = std::get<std::string>(rhs.data_);
     else
-        this->data = 0.0;
+        this->data_ = 0.0;
 } /*}}}*/
 
-inline value& value::operator=(value const& rhs) /*{{{*/
+inline Value& Value::operator=(Value const& rhs) /*{{{*/
 {
-    this->~value();
-    return *(new (this) value(rhs));
+    this->~Value();
+    return *(new (this) Value(rhs));
 } /*}}}*/
 
-inline value::VALUE_TYPE value::get_type() const /*{{{*/
+inline Value::VALUE_TYPE Value::get_type() const /*{{{*/
 {
-    return type;
+    return type_;
 } /*}}}*/
 
-inline bool value::get_bool() const /*{{{*/
+inline bool Value::get_bool() const /*{{{*/
 {
-    assert((type == VALUE_TYPE::TRUE || type == VALUE_TYPE::FALSE) && "json value is not bool");
-    return type == VALUE_TYPE::TRUE ? true : false;
+    assert((type_ == VALUE_TYPE::TRUE || type_ == VALUE_TYPE::FALSE) && "json value is not bool");
+    return type_ == VALUE_TYPE::TRUE ? true : false;
 } /*}}}*/
 
-inline double value::get_number() const /*{{{*/
+inline double Value::get_number() const /*{{{*/
 {
-    assert(type == VALUE_TYPE::NUMBER && "json value is not number");
-    return std::get<double>(data);
+    assert(type_ == VALUE_TYPE::NUMBER && "json value is not number");
+    return std::get<double>(data_);
 } /*}}}*/
 
-inline std::string value::get_string() const /*{{{*/
+inline std::string Value::get_string() const /*{{{*/
 {
-    assert(type == VALUE_TYPE::STRING && "json value is not string");
-    return std::get<std::string>(data);
+    assert(type_ == VALUE_TYPE::STRING && "json value is not string");
+    return std::get<std::string>(data_);
 } /*}}}*/
 
-inline value::array value::get_array() const /*{{{*/
+inline Value::array Value::get_array() const /*{{{*/
 {
     array arr;
-    if (std::get<array_uptr>(data))
-        arr = *std::get<array_uptr>(data);
+    if (std::get<array_uptr>(data_))
+        arr = *std::get<array_uptr>(data_);
     return arr;
 } /*}}}*/
 
-inline value::object value::get_object() const /*{{{*/
+inline Value::object Value::get_object() const /*{{{*/
 {
     object obj;
-    if (std::get<object_uptr>(data))
-        obj = *std::get<object_uptr>(data);
+    if (std::get<object_uptr>(data_))
+        obj = *std::get<object_uptr>(data_);
     return obj;
 } /*}}}*/
 
-inline void value::set_null() /*{{{*/
+inline void Value::set_null() /*{{{*/
 {
-    data = 0.0;
-    type = VALUE_TYPE::NUL;
+    data_ = 0.0;
+    type_ = VALUE_TYPE::NUL;
 } /*}}}*/
 
-inline void value::set_bool(bool tf) /*{{{*/
+inline void Value::set_bool(bool tf) /*{{{*/
 {
-    data = 0.0;
-    type = tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE;
+    data_ = 0.0;
+    type_ = tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE;
 } /*}}}*/
 
-inline void value::set_number(double n) /*{{{*/
+inline void Value::set_number(double n) /*{{{*/
 {
-    data = n;
-    type = VALUE_TYPE::NUMBER;
+    data_ = n;
+    type_ = VALUE_TYPE::NUMBER;
 } /*}}}*/
 
-inline void value::set_string(std::string&& s) /*{{{*/
+inline void Value::set_string(std::string&& s) /*{{{*/
 {
-    data = std::move(s);
-    type = VALUE_TYPE::STRING;
+    data_ = std::move(s);
+    type_ = VALUE_TYPE::STRING;
 } /*}}}*/
 
-inline void value::set_array(array&& arr) /*{{{*/
+inline void Value::set_array(array&& arr) /*{{{*/
 {
-    data = std::make_unique<array>(std::move(arr));
-    type = VALUE_TYPE::ARRAY;
+    data_ = std::make_unique<array>(std::move(arr));
+    type_ = VALUE_TYPE::ARRAY;
 } /*}}}*/
 
-inline void value::set_object(object&& obj) /*{{{*/
+inline void Value::set_object(object&& obj) /*{{{*/
 {
-    data = std::make_unique<object>(std::move(obj));
-    type = VALUE_TYPE::OBJECT;
+    data_ = std::make_unique<object>(std::move(obj));
+    type_ = VALUE_TYPE::OBJECT;
 } /*}}}*/
 
-inline std::string value::stringify() const /*{{{*/
+inline std::string Value::Stringify() const /*{{{*/
 {
-    switch (type) {
+    switch (type_) {
     case VALUE_TYPE::NUL:
     {
         std::string result = "null";
@@ -294,10 +303,10 @@ inline std::string value::stringify() const /*{{{*/
     }
 } /*}}}*/
 
-inline std::string value::stringify_number() const /*{{{*/
+inline std::string Value::stringify_number() const /*{{{*/
 {
     auto              fmt        = "%.17g";
-    double            number_raw = std::get<double>(data);
+    double            number_raw = std::get<double>(data_);
     auto              sz         = std::snprintf(nullptr, 0, fmt, number_raw);
     std::vector<char> buf(sz + 1);
     std::sprintf(&buf[0], fmt, number_raw);
@@ -305,10 +314,10 @@ inline std::string value::stringify_number() const /*{{{*/
     return result;
 } /*}}}*/
 
-inline std::string value::stringify_string() const /*{{{*/
+inline std::string Value::stringify_string() const /*{{{*/
 {
     std::string result = "\"";
-    for (auto const& ch : std::get<std::string>(data)) {
+    for (auto const& ch : std::get<std::string>(data_)) {
         switch (ch) {
         case '\"': result += "\\\""; break;
         case '\\': result += "\\\\"; break;
@@ -335,7 +344,7 @@ inline std::string value::stringify_string() const /*{{{*/
     return result;
 } /*}}}*/
 
-inline std::string value::stringify_string(std::string const& str) const /*{{{*/
+inline std::string Value::stringify_string(std::string const& str) const /*{{{*/
 {
     std::string result = "\"";
     for (auto const& ch : str) {
@@ -365,44 +374,44 @@ inline std::string value::stringify_string(std::string const& str) const /*{{{*/
     return result;
 } /*}}}*/
 
-inline std::string value::stringify_array() const /*{{{*/
+inline std::string Value::stringify_array() const /*{{{*/
 {
     std::string result = "[ ";
-    for (int i = 0; i < std::get<array_uptr>(data)->size(); i++) {
+    for (int i = 0; i < std::get<array_uptr>(data_)->size(); i++) {
         if (i > 0)
             result += ", ";
-        result += std::get<array_uptr>(data)->at(i).stringify();
+        result += std::get<array_uptr>(data_)->at(i).Stringify();
     }
     result += " ]";
     return result;
 } /*}}}*/
 
-inline std::string value::stringify_object() const /*{{{*/
+inline std::string Value::stringify_object() const /*{{{*/
 {
     std::string result = "{\n";
     int         i      = 0;
-    for (auto const& [key, val] : *(std::get<object_uptr>(data))) {
+    for (auto const& [key, val] : *(std::get<object_uptr>(data_))) {
         if (i > 0)
             result += ",\n";
-        result += stringify_string(key) + ':' + val.stringify();
+        result += stringify_string(key) + ':' + val.Stringify();
         i++;
     }
     result += "\n}";
     return result;
 } /*}}}*/
 
-inline bool value::operator==(value const& rhs) const /*{{{*/
+inline bool Value::operator==(Value const& rhs) const /*{{{*/
 {
-    if (type != rhs.type)
+    if (type_ != rhs.type_)
         return false;
-    if (type == VALUE_TYPE::TRUE || type == VALUE_TYPE::FALSE || type == VALUE_TYPE::NUL ||
-        type == VALUE_TYPE::INVALID)
+    if (type_ == VALUE_TYPE::TRUE || type_ == VALUE_TYPE::FALSE || type_ == VALUE_TYPE::NUL ||
+        type_ == VALUE_TYPE::INVALID)
         return true;
-    if (type == VALUE_TYPE::STRING || type == VALUE_TYPE::NUMBER)
-        return data == rhs.data;
-    if (type == VALUE_TYPE::ARRAY)
-        return *std::get<array_uptr>(data) == *std::get<array_uptr>(rhs.data);
-    return *std::get<object_uptr>(data) == *std::get<object_uptr>(rhs.data);
+    if (type_ == VALUE_TYPE::STRING || type_ == VALUE_TYPE::NUMBER)
+        return data_ == rhs.data_;
+    if (type_ == VALUE_TYPE::ARRAY)
+        return *std::get<array_uptr>(data_) == *std::get<array_uptr>(rhs.data_);
+    return *std::get<object_uptr>(data_) == *std::get<object_uptr>(rhs.data_);
 } /*}}}*/
 
 /* NOTE: PARSER IMPLEMENTATION */
@@ -423,25 +432,25 @@ inline bool value::operator==(value const& rhs) const /*{{{*/
 //     MISS_COLON,
 //     MISS_COMMA_OR_CURLY_BRACKET
 // };
-inline value parser::parse(std::string_view content) /*{{{*/
+inline Value Parser::Parse(std::string_view content) /*{{{*/
 {
-    return parser(content.begin(), content.end()).parse();
+    return Parser(content.begin(), content.end()).Parse();
 } /*}}}*/
 
-inline void parser::parse_whitespace() /*{{{*/
+inline void Parser::parse_whitespace() /*{{{*/
 {
-    while (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')
-        cur++;
+    while (*cur_ == ' ' || *cur_ == '\t' || *cur_ == '\n' || *cur_ == '\r')
+        cur_++;
 } /*}}}*/
 
 template<char lower, char upper> /*{{{*/
-inline bool parser::is_digital(char ch)
+inline bool Parser::is_digital(char ch)
 {
     /* parse number helper */
     return ch >= lower && ch <= upper;
 } /*}}}*/
 
-inline bool parser::is_invalid_char(char ch) /*{{{*/
+inline bool Parser::is_invalid_char(char ch) /*{{{*/
 {
     /* parse number helper */
     // unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
@@ -452,34 +461,34 @@ inline bool parser::is_invalid_char(char ch) /*{{{*/
     return static_cast<unsigned char>(ch) < '\x20';
 } /*}}}*/
 
-inline char16_t parser::parse_string_hex4() /*{{{*/
+inline char16_t Parser::parse_string_hex4() /*{{{*/
 {
     /* parse unicode helper */
     char16_t surrogate = 0;
     for (int i = 0; i < 4; i++) {
         surrogate <<= 4;
-        if ('0' <= *cur && *cur <= '9')
-            surrogate |= *cur - '0';
-        else if ('a' <= *cur && *cur <= 'f')
-            surrogate |= *cur - ('a' - 10);
-        else if ('A' <= *cur && *cur <= 'F')
-            surrogate |= *cur - ('A' - 10);
+        if ('0' <= *cur_ && *cur_ <= '9')
+            surrogate |= *cur_ - '0';
+        else if ('a' <= *cur_ && *cur_ <= 'f')
+            surrogate |= *cur_ - ('a' - 10);
+        else if ('A' <= *cur_ && *cur_ <= 'F')
+            surrogate |= *cur_ - ('A' - 10);
         else
             throw std::invalid_argument("INVALID_UNICODE_HEX");
-        ++cur;
+        ++cur_;
     }
     return surrogate;
 } /*}}}*/
 
-inline std::string parser::parse_string_utf8() /*{{{*/
+inline std::string Parser::parse_string_utf8() /*{{{*/
 {
     std::u16string u16;
     char16_t       surrogate_h = parse_string_hex4();
     u16 += surrogate_h;
     if (0xD800 <= surrogate_h && surrogate_h <= 0xDBFF) {
-        if (cur[0] != '\\' || cur[1] != 'u')
+        if (cur_[0] != '\\' || cur_[1] != 'u')
             throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
-        cur += 2;
+        cur_ += 2;
         char16_t surrogate_l = parse_string_hex4();
         if (surrogate_l < 0xDC00 || 0xDFFF < surrogate_l)
             throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
@@ -490,94 +499,94 @@ inline std::string parser::parse_string_utf8() /*{{{*/
     return u8_conv;
 } /*}}}*/
 
-inline value parser::parse() /*{{{*/
+inline Value Parser::Parse() /*{{{*/
 {
     parse_whitespace();
-    if (cur == end)
+    if (cur_ == end_)
         throw std::invalid_argument("EXPECT_VALUE");
-    value result = parse_value();
+    Value result = parse_value();
     parse_whitespace();
-    if (cur != end)
+    if (cur_ != end_)
         throw std::invalid_argument("ROOT_NOT_SINGULAR");
     return result;
 } /*}}}*/
 
-inline value parser::parse_value() /*{{{*/
+inline Value Parser::parse_value() /*{{{*/
 {
-    value result;
-    switch (*cur) {
-    case 'n': ++cur, parse_null(result); break;
-    case 't': ++cur, parse_true(result); break;
-    case 'f': ++cur, parse_false(result); break;
-    case '\"': ++cur, parse_string(result); break;
-    case '[': ++cur, parse_array(result); break;
-    case '{': ++cur, parse_object(result); break;
+    Value result;
+    switch (*cur_) {
+    case 'n': ++cur_, parse_null(result); break;
+    case 't': ++cur_, parse_true(result); break;
+    case 'f': ++cur_, parse_false(result); break;
+    case '\"': ++cur_, parse_string(result); break;
+    case '[': ++cur_, parse_array(result); break;
+    case '{': ++cur_, parse_object(result); break;
     default: parse_number(result);
     }
     return result;
 } /*}}}*/
 
-inline void parser::parse_null(value& val) /*{{{*/
+inline void Parser::parse_null(Value& val) /*{{{*/
 {
-    if (cur[0] == 'u' && cur[1] == 'l' && cur[2] == 'l') {
-        cur += 3;
+    if (cur_[0] == 'u' && cur_[1] == 'l' && cur_[2] == 'l') {
+        cur_ += 3;
         val.set_null();
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 
-inline void parser::parse_true(value& val) /*{{{*/
+inline void Parser::parse_true(Value& val) /*{{{*/
 {
-    if (cur[0] == 'r' && cur[1] == 'u' && cur[2] == 'e') {
-        cur += 3;
+    if (cur_[0] == 'r' && cur_[1] == 'u' && cur_[2] == 'e') {
+        cur_ += 3;
         val.set_bool(true);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 
-inline void parser::parse_false(value& val) /*{{{*/
+inline void Parser::parse_false(Value& val) /*{{{*/
 {
-    if (cur[0] == 'a' && cur[1] == 'l' && cur[2] == 's' && cur[3] == 'e') {
-        cur += 4;
+    if (cur_[0] == 'a' && cur_[1] == 'l' && cur_[2] == 's' && cur_[3] == 'e') {
+        cur_ += 4;
         val.set_bool(false);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 
-inline void parser::parse_number(value& val) /*{{{*/
+inline void Parser::parse_number(Value& val) /*{{{*/
 {
-    auto number_begin = cur;
-    if (*cur == '-')
-        ++cur;
-    if (*cur == '0')
-        ++cur;
-    else if (is_digital<'1', '9'>(*cur)) {
-        ++cur;
-        while (is_digital<'0', '9'>(*cur))
-            ++cur;
+    auto number_begin = cur_;
+    if (*cur_ == '-')
+        ++cur_;
+    if (*cur_ == '0')
+        ++cur_;
+    else if (is_digital<'1', '9'>(*cur_)) {
+        ++cur_;
+        while (is_digital<'0', '9'>(*cur_))
+            ++cur_;
     }
     else
         throw std::invalid_argument("INVALID_VALUE");
-    if (*cur == '.') {
-        ++cur;
-        if (!is_digital<'0', '9'>(*cur))
+    if (*cur_ == '.') {
+        ++cur_;
+        if (!is_digital<'0', '9'>(*cur_))
             throw std::invalid_argument("INVALID_VALUE");
-        while (is_digital<'0', '9'>(*cur))
-            cur++;
+        while (is_digital<'0', '9'>(*cur_))
+            cur_++;
     }
-    if (*cur == 'e' || *cur == 'E') {
-        ++cur;
-        if (*cur == '+' || *cur == '-')
-            ++cur;
-        if (!is_digital<'0', '9'>(*cur))
+    if (*cur_ == 'e' || *cur_ == 'E') {
+        ++cur_;
+        if (*cur_ == '+' || *cur_ == '-')
+            ++cur_;
+        if (!is_digital<'0', '9'>(*cur_))
             throw std::invalid_argument("INVALID_VALUE");
-        while (is_digital<'0', '9'>(*cur))
-            ++cur;
+        while (is_digital<'0', '9'>(*cur_))
+            ++cur_;
     }
-    if (number_begin == cur)
+    if (number_begin == cur_)
         throw std::invalid_argument("INVALID_VALUE");
     // Abort: stod() If the converted value would fall out of the range, will throw an out_of_range
     // exception And std::stod() will throw out_of_range exception when converts subnormal value
@@ -590,30 +599,30 @@ inline void parser::parse_number(value& val) /*{{{*/
     // catch (std::out_of_range e) {
     //     throw std::invalid_argument("NUMBER_TOO_BIG");
     // }
-    double n = std::strtod(std::string(number_begin, cur).c_str(), nullptr);
+    double n = std::strtod(std::string(number_begin, cur_).c_str(), nullptr);
     if (n == HUGE_VAL || n == -HUGE_VAL)
         throw std::invalid_argument("NUMBER_TOO_BIG");
     val.set_number(n);
 } /*}}}*/
 
-inline std::string parser::parse_string() /*{{{*/
+inline std::string Parser::parse_string() /*{{{*/
 {
     std::string s;
     while (true) {
-        if (cur == end)
+        if (cur_ == end_)
             throw std::invalid_argument("MISS_QUOTATION_MARK");
         /* deal with invalid char */
-        if (is_invalid_char(*cur))
+        if (is_invalid_char(*cur_))
             throw std::invalid_argument("INVALID_STRING_CHAR");
-        if (*cur == '\"') {
-            ++cur;
+        if (*cur_ == '\"') {
+            ++cur_;
             break;
         }
         /* deal with escape */
-        if (*cur == '\\') {
-            if (++cur == end)
+        if (*cur_ == '\\') {
+            if (++cur_ == end_)
                 throw std::invalid_argument("INVALID_STRING_ESCAPE");
-            switch (*cur++) {
+            switch (*cur_++) {
             case '\"': s.push_back('\"'); break;
             case '\\': s.push_back('\\'); break;
             case '/': s.push_back('/'); break;
@@ -633,29 +642,29 @@ inline std::string parser::parse_string() /*{{{*/
             continue;
         }
         /* deal with unescape char */
-        s.push_back(*cur++);
+        s.push_back(*cur_++);
     }
     return s;
 } /*}}}*/
 
-inline void parser::parse_string(value& val) /*{{{*/
+inline void Parser::parse_string(Value& val) /*{{{*/
 {
     std::string s;
     while (true) {
-        if (cur == end)
+        if (cur_ == end_)
             throw std::invalid_argument("MISS_QUOTATION_MARK");
         // deal with invalid char
-        if (is_invalid_char(*cur))
+        if (is_invalid_char(*cur_))
             throw std::invalid_argument("INVALID_STRING_CHAR");
-        if (*cur == '\"') {
-            ++cur;
+        if (*cur_ == '\"') {
+            ++cur_;
             break;
         }
         /* deal with escape */
-        if (*cur == '\\') {
-            if (++cur == end)
+        if (*cur_ == '\\') {
+            if (++cur_ == end_)
                 throw std::invalid_argument("INVALID_STRING_ESCAPE");
-            switch (*cur++) {
+            switch (*cur_++) {
             case '\"': s.push_back('\"'); break;
             case '\\': s.push_back('\\'); break;
             case '/': s.push_back('/'); break;
@@ -675,64 +684,64 @@ inline void parser::parse_string(value& val) /*{{{*/
             continue;
         }
         /* deal with unescape char */
-        s.push_back(*cur++);
+        s.push_back(*cur_++);
     }
     val.set_string(std::move(s));
     return;
 } /*}}}*/
 
-inline void parser::parse_array(value& val) /*{{{*/
+inline void Parser::parse_array(Value& val) /*{{{*/
 {
-    std::vector<value> result;
+    std::vector<Value> result;
     parse_whitespace();
-    if (*cur != ']') {
+    if (*cur_ != ']') {
         while (true) {
             result.emplace_back(std::move(parse_value()));
             parse_whitespace();
-            if (*cur == ',') {
-                ++cur;
+            if (*cur_ == ',') {
+                ++cur_;
                 parse_whitespace();
                 continue;
             }
-            if (*cur == ']')
+            if (*cur_ == ']')
                 break;
             throw std::invalid_argument("MISS_COMMA_OR_SQUARE_BRACKET");
         }
     }
-    ++cur;
+    ++cur_;
     val.set_array(std::move(result));
     return;
 } /*}}}*/
 
-inline void parser::parse_object(value& val) /*{{{*/
+inline void Parser::parse_object(Value& val) /*{{{*/
 {
-    std::unordered_map<std::string, value> result;
+    std::unordered_map<std::string, Value> result;
     parse_whitespace();
-    if (*cur != '}') {
+    if (*cur_ != '}') {
         while (true) {
-            if (*cur != '\"')
+            if (*cur_ != '\"')
                 throw std::invalid_argument("MISS_KEY");
-            ++cur;
+            ++cur_;
             std::string key = parse_string();
             parse_whitespace();
-            if (*cur != ':')
+            if (*cur_ != ':')
                 throw std::invalid_argument("MISS_COLON");
-            ++cur;
+            ++cur_;
             parse_whitespace();
-            value val              = parse_value();
+            Value val              = parse_value();
             result[std::move(key)] = std::move(val);
             parse_whitespace();
-            if (*cur == ',') {
-                ++cur;
+            if (*cur_ == ',') {
+                ++cur_;
                 parse_whitespace();
                 continue;
             }
-            if (*cur == '}')
+            if (*cur_ == '}')
                 break;
             throw std::invalid_argument("MISS_COMMA_OR_CURLY_BRACKET");
         }
     }
-    ++cur;
+    ++cur_;
     val.set_object(std::move(result));
     return;
 } /*}}}*/
