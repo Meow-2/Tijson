@@ -1,6 +1,8 @@
 #ifndef INCLUDE_TIJSON_H
 #define INCLUDE_TIJSON_H
 
+/* NOTE: INCLUDE */
+
 #include <cassert>
 #include <cmath>
 #include <codecvt>
@@ -14,21 +16,20 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
-// --------------------------------------------------------------
-// -                        DECLARE                             -
-// --------------------------------------------------------------
+
 namespace tijson {
+
+/*  NOTE: CLASS VALUE */
 
 class value final
 {
-    // alias
     using array       = std::vector<value>;
     using object      = std::unordered_map<std::string, value>;
     using array_uptr  = std::unique_ptr<array>;
     using object_uptr = std::unique_ptr<object>;
 
 public:
-    // the type of json value
+    /* the type of json value */
     enum class VALUE_TYPE : char
     {
         NUL     = 'n',
@@ -42,33 +43,16 @@ public:
     };
 
 public:
-    // defualt constructor
     value() = default;
 
-    // copy constructor(custom)
-    value(value const& rhs)
-    {
-        this->type = rhs.type;
-        if (rhs.type == VALUE_TYPE::ARRAY)
-            this->data = std::make_unique<array>(*std::get<array_uptr>(rhs.data));
-        else if (rhs.type == VALUE_TYPE::OBJECT)
-            this->data = std::make_unique<object>(*std::get<object_uptr>(rhs.data));
-        else if (rhs.type == VALUE_TYPE::NUMBER)
-            this->data = std::get<double>(rhs.data);
-        else if (rhs.type == VALUE_TYPE::STRING)
-            this->data = std::get<std::string>(rhs.data);
-    }
-    value& operator=(value const& rhs)
-    {
-        this->~value();
-        return *(new (this) value(rhs));
-    }
+    // deep copy
+    value(value const& rhs);
+    value& operator=(value const& rhs);
 
-    // move constructor
     value(value&&) noexcept            = default;
     value& operator=(value&&) noexcept = default;
 
-    // type judgment
+    /* type check */
     bool is_invalid() { return type == VALUE_TYPE::INVALID ? true : false; }
     bool is_null() { return type == VALUE_TYPE::NUL ? true : false; }
     bool is_true() { return type == VALUE_TYPE::TRUE ? true : false; }
@@ -78,7 +62,7 @@ public:
     bool is_array() { return type == VALUE_TYPE::ARRAY ? true : false; }
     bool is_object() { return type == VALUE_TYPE::OBJECT ? true : false; }
 
-    /* getter && setter method */
+    /* getter setter */
     [[nodiscard]] VALUE_TYPE  get_type() const;
     [[nodiscard]] bool        get_bool() const;
     [[nodiscard]] double      get_number() const;
@@ -86,15 +70,17 @@ public:
     [[nodiscard]] array       get_array() const;
     [[nodiscard]] object      get_object() const;
 
-    void set_type(VALUE_TYPE);
+    void set_null();
     void set_bool(bool);
     void set_number(double);
     void set_string(std::string&&);
     void set_array(array&&);
     void set_object(object&&);
 
-    /* stringify */
+    /* value to json string */
     [[nodiscard]] std::string stringify() const;
+
+    bool operator==(value const& rhs);
 
 private:
     /* stringify utils */
@@ -104,36 +90,38 @@ private:
     [[nodiscard]] std::string stringify_object() const;
     [[nodiscard]] std::string stringify_string(const std::string&) const;
 
-    std::variant<std::string, double, array_uptr, object_uptr> data;
+    std::variant<double, std::string, array_uptr, object_uptr> data{0.0};
     VALUE_TYPE                                                 type{VALUE_TYPE::NUL};
 };
 
+/* NOTE: CLASS PARSER */
+
 class parser final
 {
-    // alias
     using str_itr = std::string_view::iterator;
 
 public:
-    // delete copy
+    /* copy deleted */
     parser(parser const&)            = delete;
     parser& operator=(parser const&) = delete;
-    // destructor
+
+    /* move undeclared */
+
     ~parser() = default;
 
-    // parse content to val
-    static value parse(std::string_view content)
-    {
-        return parser(content.begin(), content.end()).parse();
-    }
+    /* parse content to json value */
+    static value parse(std::string_view content);
 
 private:
-    // constructor
+    /* constructor private */
     parser(str_itr const& b, str_itr const& e) : cur(b), end(e) {}
-    // real parse
-    value parse();
-    // parse tool
 
+    /* real parse */
+    value parse();
+
+    /* parse utils */
     value parse_value();
+    void  parse_whitespace();
     void  parse_null(value&);
     void  parse_true(value&);
     void  parse_false(value&);
@@ -142,182 +130,170 @@ private:
     void  parse_array(value&);
     void  parse_object(value&);
 
-    // parse raw string
+    /* parse string, return raw string */
     std::string parse_string();
 
-    void parse_whitespace()
-    {
-        while (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')
-            cur++;
-    }
 
-    // parse number helper
+    /* parse number util */
     template<char lower, char upper>
-    bool is_digital(char ch)
-    {
-        return ch >= lower && ch <= upper;
-    }
+    bool is_digital(char ch);
 
-    // parse number helper
-    bool is_invalid_char(char ch)
-    {
-        // unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
-        // '\x22' is '\"' , '\x5C' is '\\' , they will be deal, so the invalid char is less than
-        // '\x20' unsigned char : range[0,255], signed char : range[-127,127]
-        // When calulate char with number should static_cast
-        // Because char could be unsigned or signed in different compiler
-        return static_cast<unsigned char>(ch) < '\x20';
-    }
-    // parse unicode helper
-    char16_t parse_string_hex4()
-    {
-        char16_t surrogate = 0;
-        for (int i = 0; i < 4; i++) {
-            surrogate <<= 4;
-            if ('0' <= *cur && *cur <= '9')
-                surrogate |= *cur - '0';
-            else if ('a' <= *cur && *cur <= 'f')
-                surrogate |= *cur - ('a' - 10);
-            else if ('A' <= *cur && *cur <= 'F')
-                surrogate |= *cur - ('A' - 10);
-            else
-                throw std::invalid_argument("INVALID_UNICODE_HEX");
-            ++cur;
-        }
-        return surrogate;
-    }
+    /* parse string util */
+    bool is_invalid_char(char ch);
 
-    std::string parse_string_utf8()
-    {
-        std::u16string u16;
-        char16_t       surrogate_h = parse_string_hex4();
-        u16 += surrogate_h;
-        if (0xD800 <= surrogate_h && surrogate_h <= 0xDBFF) {
-            if (cur[0] != '\\' || cur[1] != 'u')
-                throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
-            cur += 2;
-            char16_t surrogate_l = parse_string_hex4();
-            if (surrogate_l < 0xDC00 || 0xDFFF < surrogate_l)
-                throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
-            u16 += surrogate_l;
-        }
-        std::string u8_conv =
-            std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(u16);
-        return u8_conv;
-    }
+    /* parse unicode util */
+    char16_t    parse_string_hex4();
+    std::string parse_string_utf8();
 
+    /* data */
     str_itr cur;
     str_itr end;
 };
 
-// parse json string to value, if failed, throw an exception
-inline value parse(std::string_view content)
+/* parse json string to value, if failed, throw an exception */
+static value parse(std::string_view content)
 {
     return parser::parse(content);
 }
 
-}   // namespace tijson
-
-
-#endif   // INCLUDE_TIJSON_H
-
-// WARN: comment the marco when test
-// #define TIJSON_IMP
-#ifdef TIJSON_IMP
-// --------------------------------------------------------------
-// -                      IMPLEMENTATION                        -
-// --------------------------------------------------------------
-namespace tijson {
-
-// NOTE: VALUE IMPLEMENTATION
-[[nodiscard]] value::VALUE_TYPE value::get_type() const   //{{{
+/* NOTE: VALUE IMPLEMENTATION */
+inline value::value(value const& rhs)
+{
+    this->type = rhs.type;
+    if (rhs.type == VALUE_TYPE::ARRAY)
+        this->data = std::make_unique<array>(*std::get<array_uptr>(rhs.data));
+    else if (rhs.type == VALUE_TYPE::OBJECT)
+        this->data = std::make_unique<object>(*std::get<object_uptr>(rhs.data));
+    else if (rhs.type == VALUE_TYPE::NUMBER)
+        this->data = std::get<double>(rhs.data);
+    else if (rhs.type == VALUE_TYPE::STRING)
+        this->data = std::get<std::string>(rhs.data);
+    else
+        this->data = 0.0;
+}
+inline value& value::operator=(value const& rhs)
+{
+    this->~value();
+    return *(new (this) value(rhs));
+}
+inline value::VALUE_TYPE value::get_type() const
 {
     return type;
-}   //}}}
+}
 
-void value::set_type(VALUE_TYPE t)   //{{{
-{
-    type = t;
-}   //}}}
-
-[[nodiscard]] bool value::get_bool() const   //{{{
+inline bool value::get_bool() const
 {
     assert((type == VALUE_TYPE::TRUE || type == VALUE_TYPE::FALSE) && "json value is not bool");
     return type == VALUE_TYPE::TRUE ? true : false;
-}   //}}}
+}
 
-[[nodiscard]] double value::get_number() const   //{{{
+inline double value::get_number() const
 {
     assert(type == VALUE_TYPE::NUMBER && "json value is not number");
     return std::get<double>(data);
-}   //}}}
+}
 
-[[nodiscard]] std::string value::get_string() const   //{{{
+inline std::string value::get_string() const
 {
     assert(type == VALUE_TYPE::STRING && "json value is not string");
     return std::get<std::string>(data);
-}   //}}}
+}
 
-[[nodiscard]] value::array value::get_array() const   //{{{
+inline value::array value::get_array() const
 {
     array arr;
     if (std::get<array_uptr>(data))
         arr = *std::get<array_uptr>(data);
     return arr;
-}   //}}}
+}
 
-[[nodiscard]] value::object value::get_object() const   //{{{
+inline value::object value::get_object() const
 {
     object obj;
     if (std::get<object_uptr>(data))
         obj = *std::get<object_uptr>(data);
     return obj;
-}   //}}}
+}
 
-void value::set_bool(bool tf)   //{{{
+inline void value::set_null()
 {
-    set_type(tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE);
-}   //}}}
+    data = 0.0;
+    type = VALUE_TYPE::NUL;
+}
 
-void value::set_number(double n)   //{{{
+inline void value::set_bool(bool tf)
+{
+    data = 0.0;
+    type = tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE;
+}
+
+inline void value::set_number(double n)
 {
     data = n;
-    set_type(VALUE_TYPE::NUMBER);
-}   //}}}
+    type = VALUE_TYPE::NUMBER;
+}
 
-void value::set_string(std::string&& s)   //{{{
+inline void value::set_string(std::string&& s)
 {
     data = std::move(s);
-    set_type(VALUE_TYPE::STRING);
-}   //}}}
+    type = VALUE_TYPE::STRING;
+}
 
-void value::set_array(array&& arr)   //{{{
+inline void value::set_array(array&& arr)
 {
     data = std::make_unique<array>(std::move(arr));
-    set_type(VALUE_TYPE::ARRAY);
-}   //}}}
+    type = VALUE_TYPE::ARRAY;
+}
 
-void value::set_object(object&& obj)   //{{{
+inline void value::set_object(object&& obj)
 {
     data = std::make_unique<object>(std::move(obj));
-    set_type(VALUE_TYPE::OBJECT);
-}   //}}}
+    type = VALUE_TYPE::OBJECT;
+}
 
-std::string value::stringify() const   //{{{
+inline std::string value::stringify() const
 {
     switch (type) {
-    case VALUE_TYPE::NULL: std::string result = "null"; return result;
-    case VALUE_TYPE::TRUE: std::string result = "true"; return result;
-    case VALUE_TYPE::FALSE: std::string result = "false"; return result;
-    case VALUE_TYPE::NUMBER: std::string result = stringify_number(); return result;
-    case VALUE_TYPE::STRING: std::string result = stringify_string(); return result;
-    case VALUE_TYPE::ARRAY: std::string result = stringify_array(); return result;
-    case VALUE_TYPE::OBJECT: std::string result = stringify_object(); return result;
+    case VALUE_TYPE::NUL:
+    {
+        std::string result = "null";
+        return result;
+    }
+    case VALUE_TYPE::TRUE:
+    {
+        std::string result = "true";
+        return result;
+    }
+    case VALUE_TYPE::FALSE:
+    {
+        std::string result = "false";
+        return result;
+    }
+    case VALUE_TYPE::NUMBER:
+    {
+        std::string result = stringify_number();
+        return result;
+    }
+    case VALUE_TYPE::STRING:
+    {
+        std::string result = stringify_string();
+        return result;
+    }
+    case VALUE_TYPE::ARRAY:
+    {
+        std::string result = stringify_array();
+        return result;
+    }
+    case VALUE_TYPE::OBJECT:
+    {
+        std::string result = stringify_object();
+        return result;
+    }
     case VALUE_TYPE::INVALID: return "";
     }
-}   //}}}
+}
 
-std::string value::stringify_number() const   //{{{
+inline std::string value::stringify_number() const
 {
     auto              fmt        = "%.17g";
     double            number_raw = std::get<double>(data);
@@ -326,9 +302,9 @@ std::string value::stringify_number() const   //{{{
     std::sprintf(&buf[0], fmt, number_raw);
     std::string result(buf.begin(), buf.end() - 1);
     return result;
-}   //}}}
+}
 
-std::string value::stringify_string() const   //{{{
+inline std::string value::stringify_string() const
 {
     std::string result = "\"";
     for (auto const& ch : std::get<std::string>(data)) {
@@ -356,9 +332,9 @@ std::string value::stringify_string() const   //{{{
     }
     result += '\"';
     return result;
-}   //}}}
+}
 
-std::string value::stringify_string(std::string const& str) const   //{{{
+inline std::string value::stringify_string(std::string const& str) const
 {
     std::string result = "\"";
     for (auto const& ch : str) {
@@ -386,9 +362,9 @@ std::string value::stringify_string(std::string const& str) const   //{{{
     }
     result += '\"';
     return result;
-}   //}}}
+}
 
-std::string value::stringify_array() const   //{{{
+inline std::string value::stringify_array() const
 {
     std::string result = "[ ";
     for (int i = 0; i < std::get<array_uptr>(data)->size(); i++) {
@@ -398,9 +374,9 @@ std::string value::stringify_array() const   //{{{
     }
     result += " ]";
     return result;
-}   //}}}
+}
 
-std::string value::stringify_object() const   //{{{
+inline std::string value::stringify_object() const
 {
     std::string result = "{\n";
     int         i      = 0;
@@ -412,9 +388,9 @@ std::string value::stringify_object() const   //{{{
     }
     result += "\n}";
     return result;
-}   //}}}
+}
 
-// NOTE: PARSER IMPLEMENTATION
+/* NOTE: PARSER IMPLEMENTATION */
 // enum class ERROR_CODE : size_t
 // {
 //     OK = 0,
@@ -432,7 +408,72 @@ std::string value::stringify_object() const   //{{{
 //     MISS_COLON,
 //     MISS_COMMA_OR_CURLY_BRACKET
 // };
-value parser::parse()
+inline value parser::parse(std::string_view content)
+{
+    return parser(content.begin(), content.end()).parse();
+}
+inline void parser::parse_whitespace()
+{
+    while (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')
+        cur++;
+}
+
+// parse number helper
+template<char lower, char upper>
+inline bool parser::is_digital(char ch)
+{
+    return ch >= lower && ch <= upper;
+}
+
+// parse number helper
+inline bool parser::is_invalid_char(char ch)
+{
+    // unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
+    // '\x22' is '\"' , '\x5C' is '\\' , they will be deal, so the invalid char is less than
+    // '\x20' unsigned char : range[0,255], signed char : range[-127,127]
+    // When calulate char with number should static_cast
+    // Because char could be unsigned or signed in different compiler
+    return static_cast<unsigned char>(ch) < '\x20';
+}
+// parse unicode helper
+inline char16_t parser::parse_string_hex4()
+{
+    char16_t surrogate = 0;
+    for (int i = 0; i < 4; i++) {
+        surrogate <<= 4;
+        if ('0' <= *cur && *cur <= '9')
+            surrogate |= *cur - '0';
+        else if ('a' <= *cur && *cur <= 'f')
+            surrogate |= *cur - ('a' - 10);
+        else if ('A' <= *cur && *cur <= 'F')
+            surrogate |= *cur - ('A' - 10);
+        else
+            throw std::invalid_argument("INVALID_UNICODE_HEX");
+        ++cur;
+    }
+    return surrogate;
+}
+
+inline std::string parser::parse_string_utf8()
+{
+    std::u16string u16;
+    char16_t       surrogate_h = parse_string_hex4();
+    u16 += surrogate_h;
+    if (0xD800 <= surrogate_h && surrogate_h <= 0xDBFF) {
+        if (cur[0] != '\\' || cur[1] != 'u')
+            throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
+        cur += 2;
+        char16_t surrogate_l = parse_string_hex4();
+        if (surrogate_l < 0xDC00 || 0xDFFF < surrogate_l)
+            throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
+        u16 += surrogate_l;
+    }
+    std::string u8_conv =
+        std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(u16);
+    return u8_conv;
+}
+
+inline value parser::parse()
 {
     parse_whitespace();
     if (cur == end)
@@ -444,7 +485,7 @@ value parser::parse()
     return result;
 }
 
-value parser::parse_value()
+inline value parser::parse_value()
 {
     value result;
     switch (*cur) {
@@ -459,37 +500,37 @@ value parser::parse_value()
     return result;
 }
 
-void parser::parse_null(value& val)   //{{{
+inline void parser::parse_null(value& val)
 {
     if (cur[0] == 'u' && cur[1] == 'l' && cur[2] == 'l') {
         cur += 3;
-        val.set_type(value::VALUE_TYPE::NUL);
+        val.set_null();
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-}   //}}}
+}
 
-void parser::parse_true(value& val)   //{{{
+inline void parser::parse_true(value& val)
 {
     if (cur[0] == 'r' && cur[1] == 'u' && cur[2] == 'e') {
         cur += 3;
-        val.set_type(value::VALUE_TYPE::TRUE);
+        val.set_bool(true);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-}   //}}}
+}
 
-void parser::parse_false(value& val)   //{{{
+inline void parser::parse_false(value& val)
 {
     if (cur[0] == 'a' && cur[1] == 'l' && cur[2] == 's' && cur[3] == 'e') {
         cur += 4;
-        val.set_type(value::VALUE_TYPE::FALSE);
+        val.set_bool(false);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-}   //}}}
+}
 
-void parser::parse_number(value& val)   //{{{
+inline void parser::parse_number(value& val)
 {
     auto number_begin = cur;
     if (*cur == '-')
@@ -536,22 +577,22 @@ void parser::parse_number(value& val)   //{{{
     if (n == HUGE_VAL || n == -HUGE_VAL)
         throw std::invalid_argument("NUMBER_TOO_BIG");
     val.set_number(n);
-}   //}}}
+}
 
-std::string parser::parse_string()   //{{{
+inline std::string parser::parse_string()
 {
     std::string s;
     while (true) {
         if (cur == end)
             throw std::invalid_argument("MISS_QUOTATION_MARK");
-        // deal with invalid char
+        /* deal with invalid char */
         if (is_invalid_char(*cur))
             throw std::invalid_argument("INVALID_STRING_CHAR");
         if (*cur == '\"') {
             ++cur;
             break;
         }
-        // deal with escape
+        /* deal with escape */
         if (*cur == '\\') {
             if (++cur == end)
                 throw std::invalid_argument("INVALID_STRING_ESCAPE");
@@ -574,13 +615,13 @@ std::string parser::parse_string()   //{{{
             }
             continue;
         }
-        // deal with unescape char
+        /* deal with unescape char */
         s.push_back(*cur++);
     }
     return s;
-}   //}}}
+}
 
-void parser::parse_string(value& val)   //{{{
+inline void parser::parse_string(value& val)
 {
     std::string s;
     while (true) {
@@ -593,7 +634,7 @@ void parser::parse_string(value& val)   //{{{
             ++cur;
             break;
         }
-        // deal with escape
+        /* deal with escape */
         if (*cur == '\\') {
             if (++cur == end)
                 throw std::invalid_argument("INVALID_STRING_ESCAPE");
@@ -616,14 +657,14 @@ void parser::parse_string(value& val)   //{{{
             }
             continue;
         }
-        // deal with unescape char
+        /* deal with unescape char */
         s.push_back(*cur++);
     }
     val.set_string(std::move(s));
     return;
-}   //}}}
+}
 
-void parser::parse_array(value& val)   //{{{
+inline void parser::parse_array(value& val)
 {
     std::vector<value> result;
     parse_whitespace();
@@ -644,9 +685,9 @@ void parser::parse_array(value& val)   //{{{
     ++cur;
     val.set_array(std::move(result));
     return;
-}   //}}}
+}
 
-void parser::parse_object(value& val)   //{{{
+inline void parser::parse_object(value& val)
 {
     std::unordered_map<std::string, value> result;
     parse_whitespace();
@@ -677,7 +718,6 @@ void parser::parse_object(value& val)   //{{{
     ++cur;
     val.set_object(std::move(result));
     return;
-}   //}}}
-
-}   // namespace tijson
-#endif   // TIJSON_IMP
+}
+} /* namespace tijson */
+#endif /* INCLUDE_TIJSON_H */
