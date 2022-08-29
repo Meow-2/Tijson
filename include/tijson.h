@@ -7,7 +7,6 @@
 #include <cmath>
 #include <codecvt>
 #include <cstdio>
-#include <iomanip>
 #include <locale>
 #include <memory>
 #include <stdexcept>
@@ -80,7 +79,7 @@ public:
     /* value to json string */
     [[nodiscard]] std::string stringify() const;
 
-    bool operator==(value const& rhs);
+    bool operator==(value const& rhs) const;
 
 private:
     /* stringify utils */
@@ -91,7 +90,7 @@ private:
     [[nodiscard]] std::string stringify_string(const std::string&) const;
 
     std::variant<double, std::string, array_uptr, object_uptr> data{0.0};
-    VALUE_TYPE                                                 type{VALUE_TYPE::NUL};
+    VALUE_TYPE                                                 type{VALUE_TYPE::INVALID};
 };
 
 /* NOTE: CLASS PARSER */
@@ -157,7 +156,7 @@ static value parse(std::string_view content)
 }
 
 /* NOTE: VALUE IMPLEMENTATION */
-inline value::value(value const& rhs)
+inline value::value(value const& rhs) /*{{{*/
 {
     this->type = rhs.type;
     if (rhs.type == VALUE_TYPE::ARRAY)
@@ -170,88 +169,90 @@ inline value::value(value const& rhs)
         this->data = std::get<std::string>(rhs.data);
     else
         this->data = 0.0;
-}
-inline value& value::operator=(value const& rhs)
+} /*}}}*/
+
+inline value& value::operator=(value const& rhs) /*{{{*/
 {
     this->~value();
     return *(new (this) value(rhs));
-}
-inline value::VALUE_TYPE value::get_type() const
+} /*}}}*/
+
+inline value::VALUE_TYPE value::get_type() const /*{{{*/
 {
     return type;
-}
+} /*}}}*/
 
-inline bool value::get_bool() const
+inline bool value::get_bool() const /*{{{*/
 {
     assert((type == VALUE_TYPE::TRUE || type == VALUE_TYPE::FALSE) && "json value is not bool");
     return type == VALUE_TYPE::TRUE ? true : false;
-}
+} /*}}}*/
 
-inline double value::get_number() const
+inline double value::get_number() const /*{{{*/
 {
     assert(type == VALUE_TYPE::NUMBER && "json value is not number");
     return std::get<double>(data);
-}
+} /*}}}*/
 
-inline std::string value::get_string() const
+inline std::string value::get_string() const /*{{{*/
 {
     assert(type == VALUE_TYPE::STRING && "json value is not string");
     return std::get<std::string>(data);
-}
+} /*}}}*/
 
-inline value::array value::get_array() const
+inline value::array value::get_array() const /*{{{*/
 {
     array arr;
     if (std::get<array_uptr>(data))
         arr = *std::get<array_uptr>(data);
     return arr;
-}
+} /*}}}*/
 
-inline value::object value::get_object() const
+inline value::object value::get_object() const /*{{{*/
 {
     object obj;
     if (std::get<object_uptr>(data))
         obj = *std::get<object_uptr>(data);
     return obj;
-}
+} /*}}}*/
 
-inline void value::set_null()
+inline void value::set_null() /*{{{*/
 {
     data = 0.0;
     type = VALUE_TYPE::NUL;
-}
+} /*}}}*/
 
-inline void value::set_bool(bool tf)
+inline void value::set_bool(bool tf) /*{{{*/
 {
     data = 0.0;
     type = tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE;
-}
+} /*}}}*/
 
-inline void value::set_number(double n)
+inline void value::set_number(double n) /*{{{*/
 {
     data = n;
     type = VALUE_TYPE::NUMBER;
-}
+} /*}}}*/
 
-inline void value::set_string(std::string&& s)
+inline void value::set_string(std::string&& s) /*{{{*/
 {
     data = std::move(s);
     type = VALUE_TYPE::STRING;
-}
+} /*}}}*/
 
-inline void value::set_array(array&& arr)
+inline void value::set_array(array&& arr) /*{{{*/
 {
     data = std::make_unique<array>(std::move(arr));
     type = VALUE_TYPE::ARRAY;
-}
+} /*}}}*/
 
-inline void value::set_object(object&& obj)
+inline void value::set_object(object&& obj) /*{{{*/
 {
     data = std::make_unique<object>(std::move(obj));
     type = VALUE_TYPE::OBJECT;
-}
+} /*}}}*/
 
-inline std::string value::stringify() const
+inline std::string value::stringify() const /*{{{*/
 {
     switch (type) {
     case VALUE_TYPE::NUL:
@@ -291,9 +292,9 @@ inline std::string value::stringify() const
     }
     case VALUE_TYPE::INVALID: return "";
     }
-}
+} /*}}}*/
 
-inline std::string value::stringify_number() const
+inline std::string value::stringify_number() const /*{{{*/
 {
     auto              fmt        = "%.17g";
     double            number_raw = std::get<double>(data);
@@ -302,9 +303,9 @@ inline std::string value::stringify_number() const
     std::sprintf(&buf[0], fmt, number_raw);
     std::string result(buf.begin(), buf.end() - 1);
     return result;
-}
+} /*}}}*/
 
-inline std::string value::stringify_string() const
+inline std::string value::stringify_string() const /*{{{*/
 {
     std::string result = "\"";
     for (auto const& ch : std::get<std::string>(data)) {
@@ -320,7 +321,7 @@ inline std::string value::stringify_string() const
         default:
             auto temp = static_cast<unsigned char>(ch);
             if (temp < 0x20) {
-                auto              fmt = "\\u04X";
+                auto              fmt = "\\u%04X";
                 auto              sz  = std::snprintf(nullptr, 0, fmt, temp);
                 std::vector<char> buf(sz + 1);
                 std::sprintf(&buf[0], fmt, temp);
@@ -332,9 +333,9 @@ inline std::string value::stringify_string() const
     }
     result += '\"';
     return result;
-}
+} /*}}}*/
 
-inline std::string value::stringify_string(std::string const& str) const
+inline std::string value::stringify_string(std::string const& str) const /*{{{*/
 {
     std::string result = "\"";
     for (auto const& ch : str) {
@@ -362,9 +363,9 @@ inline std::string value::stringify_string(std::string const& str) const
     }
     result += '\"';
     return result;
-}
+} /*}}}*/
 
-inline std::string value::stringify_array() const
+inline std::string value::stringify_array() const /*{{{*/
 {
     std::string result = "[ ";
     for (int i = 0; i < std::get<array_uptr>(data)->size(); i++) {
@@ -374,9 +375,9 @@ inline std::string value::stringify_array() const
     }
     result += " ]";
     return result;
-}
+} /*}}}*/
 
-inline std::string value::stringify_object() const
+inline std::string value::stringify_object() const /*{{{*/
 {
     std::string result = "{\n";
     int         i      = 0;
@@ -388,7 +389,21 @@ inline std::string value::stringify_object() const
     }
     result += "\n}";
     return result;
-}
+} /*}}}*/
+
+inline bool value::operator==(value const& rhs) const /*{{{*/
+{
+    if (type != rhs.type)
+        return false;
+    if (type == VALUE_TYPE::TRUE || type == VALUE_TYPE::FALSE || type == VALUE_TYPE::NUL ||
+        type == VALUE_TYPE::INVALID)
+        return true;
+    if (type == VALUE_TYPE::STRING || type == VALUE_TYPE::NUMBER)
+        return data == rhs.data;
+    if (type == VALUE_TYPE::ARRAY)
+        return *std::get<array_uptr>(data) == *std::get<array_uptr>(rhs.data);
+    return *std::get<object_uptr>(data) == *std::get<object_uptr>(rhs.data);
+} /*}}}*/
 
 /* NOTE: PARSER IMPLEMENTATION */
 // enum class ERROR_CODE : size_t
@@ -408,36 +423,38 @@ inline std::string value::stringify_object() const
 //     MISS_COLON,
 //     MISS_COMMA_OR_CURLY_BRACKET
 // };
-inline value parser::parse(std::string_view content)
+inline value parser::parse(std::string_view content) /*{{{*/
 {
     return parser(content.begin(), content.end()).parse();
-}
-inline void parser::parse_whitespace()
+} /*}}}*/
+
+inline void parser::parse_whitespace() /*{{{*/
 {
     while (*cur == ' ' || *cur == '\t' || *cur == '\n' || *cur == '\r')
         cur++;
-}
+} /*}}}*/
 
-// parse number helper
-template<char lower, char upper>
+template<char lower, char upper> /*{{{*/
 inline bool parser::is_digital(char ch)
 {
+    /* parse number helper */
     return ch >= lower && ch <= upper;
-}
+} /*}}}*/
 
-// parse number helper
-inline bool parser::is_invalid_char(char ch)
+inline bool parser::is_invalid_char(char ch) /*{{{*/
 {
+    /* parse number helper */
     // unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
     // '\x22' is '\"' , '\x5C' is '\\' , they will be deal, so the invalid char is less than
     // '\x20' unsigned char : range[0,255], signed char : range[-127,127]
     // When calulate char with number should static_cast
     // Because char could be unsigned or signed in different compiler
     return static_cast<unsigned char>(ch) < '\x20';
-}
-// parse unicode helper
-inline char16_t parser::parse_string_hex4()
+} /*}}}*/
+
+inline char16_t parser::parse_string_hex4() /*{{{*/
 {
+    /* parse unicode helper */
     char16_t surrogate = 0;
     for (int i = 0; i < 4; i++) {
         surrogate <<= 4;
@@ -452,9 +469,9 @@ inline char16_t parser::parse_string_hex4()
         ++cur;
     }
     return surrogate;
-}
+} /*}}}*/
 
-inline std::string parser::parse_string_utf8()
+inline std::string parser::parse_string_utf8() /*{{{*/
 {
     std::u16string u16;
     char16_t       surrogate_h = parse_string_hex4();
@@ -471,9 +488,9 @@ inline std::string parser::parse_string_utf8()
     std::string u8_conv =
         std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t>{}.to_bytes(u16);
     return u8_conv;
-}
+} /*}}}*/
 
-inline value parser::parse()
+inline value parser::parse() /*{{{*/
 {
     parse_whitespace();
     if (cur == end)
@@ -483,9 +500,9 @@ inline value parser::parse()
     if (cur != end)
         throw std::invalid_argument("ROOT_NOT_SINGULAR");
     return result;
-}
+} /*}}}*/
 
-inline value parser::parse_value()
+inline value parser::parse_value() /*{{{*/
 {
     value result;
     switch (*cur) {
@@ -498,9 +515,9 @@ inline value parser::parse_value()
     default: parse_number(result);
     }
     return result;
-}
+} /*}}}*/
 
-inline void parser::parse_null(value& val)
+inline void parser::parse_null(value& val) /*{{{*/
 {
     if (cur[0] == 'u' && cur[1] == 'l' && cur[2] == 'l') {
         cur += 3;
@@ -508,9 +525,9 @@ inline void parser::parse_null(value& val)
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-}
+} /*}}}*/
 
-inline void parser::parse_true(value& val)
+inline void parser::parse_true(value& val) /*{{{*/
 {
     if (cur[0] == 'r' && cur[1] == 'u' && cur[2] == 'e') {
         cur += 3;
@@ -518,9 +535,9 @@ inline void parser::parse_true(value& val)
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-}
+} /*}}}*/
 
-inline void parser::parse_false(value& val)
+inline void parser::parse_false(value& val) /*{{{*/
 {
     if (cur[0] == 'a' && cur[1] == 'l' && cur[2] == 's' && cur[3] == 'e') {
         cur += 4;
@@ -528,9 +545,9 @@ inline void parser::parse_false(value& val)
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
-}
+} /*}}}*/
 
-inline void parser::parse_number(value& val)
+inline void parser::parse_number(value& val) /*{{{*/
 {
     auto number_begin = cur;
     if (*cur == '-')
@@ -577,9 +594,9 @@ inline void parser::parse_number(value& val)
     if (n == HUGE_VAL || n == -HUGE_VAL)
         throw std::invalid_argument("NUMBER_TOO_BIG");
     val.set_number(n);
-}
+} /*}}}*/
 
-inline std::string parser::parse_string()
+inline std::string parser::parse_string() /*{{{*/
 {
     std::string s;
     while (true) {
@@ -619,9 +636,9 @@ inline std::string parser::parse_string()
         s.push_back(*cur++);
     }
     return s;
-}
+} /*}}}*/
 
-inline void parser::parse_string(value& val)
+inline void parser::parse_string(value& val) /*{{{*/
 {
     std::string s;
     while (true) {
@@ -662,9 +679,9 @@ inline void parser::parse_string(value& val)
     }
     val.set_string(std::move(s));
     return;
-}
+} /*}}}*/
 
-inline void parser::parse_array(value& val)
+inline void parser::parse_array(value& val) /*{{{*/
 {
     std::vector<value> result;
     parse_whitespace();
@@ -685,9 +702,9 @@ inline void parser::parse_array(value& val)
     ++cur;
     val.set_array(std::move(result));
     return;
-}
+} /*}}}*/
 
-inline void parser::parse_object(value& val)
+inline void parser::parse_object(value& val) /*{{{*/
 {
     std::unordered_map<std::string, value> result;
     parse_whitespace();
@@ -718,6 +735,7 @@ inline void parser::parse_object(value& val)
     ++cur;
     val.set_object(std::move(result));
     return;
-}
+} /*}}}*/
+
 } /* namespace tijson */
 #endif /* INCLUDE_TIJSON_H */

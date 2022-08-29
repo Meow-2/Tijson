@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <iostream>
 #include <magic_enum.hpp>
 #include <stdexcept>
 #include <tijson.h>
@@ -89,3 +90,14 @@
         EXPECT_EQ(v.get_string(), TEST_STRING); \
         EXPECT_EQ_VALUE_TYPE(v, STRING);        \
     } while (0)
+
+#define EXPECT_STRINGIFY_EQ(TEST_CONTENT)               \
+    do {                                                \
+        auto v           = tijson::parse(TEST_CONTENT); \
+        auto v_deep_copy = v;                           \
+        auto str         = v_deep_copy.stringify();     \
+        std::cout << str << '\n';                       \
+        v       = std::move(tijson::parse(str));        \
+        auto v2 = tijson::parse(str);                   \
+        EXPECT_EQ(v2, v);                               \
+    } while (0)\
