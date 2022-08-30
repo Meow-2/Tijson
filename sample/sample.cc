@@ -15,23 +15,30 @@ int main()
             "Null" : null,
             "True" : true,
             "False" : false,
-            "Number" : -213.123E-13,
-            "String" : "HAPPY\u4455",
-            "Array" : [ [null], [false], [ ["Hello\nWorld", -123.321,
-            {"key":null}]]],
+            "Number" : 314159E-5,
+            "String" : "tijson",
+            "Array" : [ ["Hello\nWorld"]], 
             "Object": {
-                    "o_key":[123, "asdad"]
+                    "TIJSON":[123, "Tijson"]
             }
         }
     )");
     auto&&        obj       = json_val2.GetObject();
-    std::cout << obj["Null"].IsNull();
-    std::cout << obj["True"].GetBool();
-    std::cout << obj["False"].GetBool();
-    std::cout << obj["Number"].GetNumber();
-    std::cout << obj["String"].GetString();
-    std::cout << obj["Array"].GetArray()[2].GetArray()[0].GetString();
-    /* std::cout << obj["Object"].get_object()[2].GetArray()[0].get_string(); */
-    std::cout << "json_val2:\n" << json_val2.Stringify() << '\n';
+    std::cout << "Null:" << obj["Null"].IsNull() << '\n';
+    // Null:1
+    std::cout << "True:" << obj["True"].GetBool() << '\n';
+    // True:1
+    std::cout << "False:" << obj["False"].GetBool() << '\n';
+    // False:0
+    std::cout << "Number:" << obj["Number"].GetNumber() << '\n';
+    // Number:3.14159
+    std::cout << "String:" << obj["String"].GetString() << '\n';
+    // String:tijson
+    std::cout << "Array[0][0]:" << obj["Array"].GetArray()[0].GetArray()[0].GetString() << '\n';
+    // Hello
+    // World
+    std::cout << "Object[\"TIJSON\"][0]:"
+              << obj["Object"].GetObject()["TIJSON"].GetArray()[0].GetNumber() << '\n';
+    // Object:Tijson
     return 0;
 }

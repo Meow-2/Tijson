@@ -98,4 +98,4 @@
         v                = std::move(tijson::Parser::Parse(str)); \
         auto v2          = tijson::Parser::Parse(str);            \
         EXPECT_EQ(v2, v);                                         \
-    } while (0)\
+    } while (0)

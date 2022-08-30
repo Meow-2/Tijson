@@ -186,6 +186,7 @@ inline Value& Value::operator=(Value const& rhs) /*{{{*/
     return *(new (this) Value(rhs));
 } /*}}}*/
 
+// TODO: Fix variant bad access of GetObject[""], GetArray[-1]
 inline Value::VALUE_TYPE Value::GetType() const /*{{{*/
 {
     return type_;
@@ -264,43 +265,16 @@ inline void Value::SetObject(Object&& obj) /*{{{*/
 inline std::string Value::Stringify() const /*{{{*/
 {
     switch (type_) {
-    case VALUE_TYPE::NUL:
-    {
-        std::string result = "null";
-        return result;
+    case VALUE_TYPE::NUL: return "null";
+    case VALUE_TYPE::TRUE: return "true";
+    case VALUE_TYPE::FALSE: return "false";
+    case VALUE_TYPE::NUMBER: return StringifyNumber();
+    case VALUE_TYPE::STRING: return StringifyString();
+    case VALUE_TYPE::ARRAY: return StringifyArray();
+    case VALUE_TYPE::OBJECT: return StringifyObject();
+    case VALUE_TYPE::INVALID: break;
     }
-    case VALUE_TYPE::TRUE:
-    {
-        std::string result = "true";
-        return result;
-    }
-    case VALUE_TYPE::FALSE:
-    {
-        std::string result = "false";
-        return result;
-    }
-    case VALUE_TYPE::NUMBER:
-    {
-        std::string result = StringifyNumber();
-        return result;
-    }
-    case VALUE_TYPE::STRING:
-    {
-        std::string result = StringifyString();
-        return result;
-    }
-    case VALUE_TYPE::ARRAY:
-    {
-        std::string result = StringifyArray();
-        return result;
-    }
-    case VALUE_TYPE::OBJECT:
-    {
-        std::string result = StringifyObject();
-        return result;
-    }
-    case VALUE_TYPE::INVALID: return "";
-    }
+    return "";
 } /*}}}*/
 
 inline std::string Value::StringifyNumber() const /*{{{*/
