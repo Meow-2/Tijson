@@ -3,10 +3,10 @@
 
 TEST(PARSE_OBJECT, OBJECT)
 {
-    auto v = tijson::parse(" { } ");
+    auto v = tijson::Parse(" { } ");
     auto v_deep_copy(v);
-    EXPECT_EQ(v_deep_copy.get_object().size(), 0);
-    v = tijson::parse(" { "
+    EXPECT_EQ(v_deep_copy.GetObject().size(), 0);
+    v = tijson::Parse(" { "
                       "\"n\" : null , "
                       "\"f\" : false , "
                       "\"t\" : true , "
@@ -18,16 +18,16 @@ TEST(PARSE_OBJECT, OBJECT)
 
     );
     auto v_deep_move(std::move(v));
-    auto object0 = v_deep_move.get_object();
+    auto object0 = v_deep_move.GetObject();
     EXPECT_VALUE_EQ_NULL(object0["n"]);
     EXPECT_VALUE_EQ_FALSE(object0["f"]);
     EXPECT_VALUE_EQ_TRUE(object0["t"]);
     EXPECT_VALUE_EQ_NUMBER(object0["i"], 123);
     EXPECT_VALUE_EQ_STRING(object0["s"], "abc");
-    auto array = object0["a"].get_array();
+    auto array = object0["a"].GetArray();
     for (int i = 0; i < array.size(); i++)
         EXPECT_VALUE_EQ_NUMBER(array[i], i + 1);
-    auto object1 = object0["o"].get_object();
+    auto object1 = object0["o"].GetObject();
     for (int i = 0; i < object1.size(); i++)
         EXPECT_VALUE_EQ_NUMBER(object1[std::to_string(i + 1)], i + 1);
 }

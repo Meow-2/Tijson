@@ -22,10 +22,10 @@ namespace tijson {
 
 class Value final
 {
-    using array       = std::vector<Value>;
-    using object      = std::unordered_map<std::string, Value>;
-    using array_uptr  = std::unique_ptr<array>;
-    using object_uptr = std::unique_ptr<object>;
+    using Array      = std::vector<Value>;
+    using Object     = std::unordered_map<std::string, Value>;
+    using ArrayUPtr  = std::unique_ptr<Array>;
+    using ObjectUPtr = std::unique_ptr<Object>;
 
 public:
     /* the type of json value */
@@ -52,29 +52,29 @@ public:
     Value& operator=(Value&&) noexcept = default;
 
     /* type check */
-    bool is_invalid() { return type_ == VALUE_TYPE::INVALID ? true : false; }
-    bool is_null() { return type_ == VALUE_TYPE::NUL ? true : false; }
-    bool is_true() { return type_ == VALUE_TYPE::TRUE ? true : false; }
-    bool is_false() { return type_ == VALUE_TYPE::FALSE ? true : false; }
-    bool is_number() { return type_ == VALUE_TYPE::NUMBER ? true : false; }
-    bool is_string() { return type_ == VALUE_TYPE::STRING ? true : false; }
-    bool is_array() { return type_ == VALUE_TYPE::ARRAY ? true : false; }
-    bool is_object() { return type_ == VALUE_TYPE::OBJECT ? true : false; }
+    bool IsInvalid() { return type_ == VALUE_TYPE::INVALID ? true : false; }
+    bool IsNull() { return type_ == VALUE_TYPE::NUL ? true : false; }
+    bool IsTrue() { return type_ == VALUE_TYPE::TRUE ? true : false; }
+    bool IsFalse() { return type_ == VALUE_TYPE::FALSE ? true : false; }
+    bool IsNumber() { return type_ == VALUE_TYPE::NUMBER ? true : false; }
+    bool IsString() { return type_ == VALUE_TYPE::STRING ? true : false; }
+    bool IsArray() { return type_ == VALUE_TYPE::ARRAY ? true : false; }
+    bool IsObject() { return type_ == VALUE_TYPE::OBJECT ? true : false; }
 
     /* getter setter */
-    [[nodiscard]] VALUE_TYPE  get_type() const;
-    [[nodiscard]] bool        get_bool() const;
-    [[nodiscard]] double      get_number() const;
-    [[nodiscard]] std::string get_string() const;
-    [[nodiscard]] array       get_array() const;
-    [[nodiscard]] object      get_object() const;
+    [[nodiscard]] VALUE_TYPE  GetType() const;
+    [[nodiscard]] bool        GetBool() const;
+    [[nodiscard]] double      GetNumber() const;
+    [[nodiscard]] std::string GetString() const;
+    [[nodiscard]] Array       GetArray() const;
+    [[nodiscard]] Object      GetObject() const;
 
-    void set_null();
-    void set_bool(bool);
-    void set_number(double);
-    void set_string(std::string&&);
-    void set_array(array&&);
-    void set_object(object&&);
+    void SetNull();
+    void SetBool(bool);
+    void SetNumber(double);
+    void SetString(std::string&&);
+    void SetArray(Array&&);
+    void SetObject(Object&&);
 
     /* value to json string */
     [[nodiscard]] std::string Stringify() const;
@@ -83,14 +83,14 @@ public:
 
 private:
     /* stringify utils */
-    [[nodiscard]] std::string stringify_number() const;
-    [[nodiscard]] std::string stringify_string() const;
-    [[nodiscard]] std::string stringify_array() const;
-    [[nodiscard]] std::string stringify_object() const;
-    [[nodiscard]] std::string stringify_string(const std::string&) const;
+    [[nodiscard]] std::string StringifyNumber() const;
+    [[nodiscard]] std::string StringifyString() const;
+    [[nodiscard]] std::string StringifyArray() const;
+    [[nodiscard]] std::string StringifyObject() const;
+    [[nodiscard]] std::string StringifyString(std::string_view) const;
 
-    std::variant<double, std::string, array_uptr, object_uptr> data_{0.0};
-    VALUE_TYPE                                                 type_{VALUE_TYPE::INVALID};
+    std::variant<double, std::string, ArrayUPtr, ObjectUPtr> data_{0.0};
+    VALUE_TYPE                                               type_{VALUE_TYPE::INVALID};
 };
 
 /* NOTE: CLASS PARSER */
@@ -152,7 +152,7 @@ private:
 /* NOTE: PARSER EXCEPTION */
 
 /* parse json string to value, if failed, throw an exception */
-static Value parse(std::string_view content)
+static Value Parse(std::string_view content)
 {
     Value result;
     try {
@@ -169,9 +169,9 @@ inline Value::Value(Value const& rhs) /*{{{*/
 {
     this->type_ = rhs.type_;
     if (rhs.type_ == VALUE_TYPE::ARRAY)
-        this->data_ = std::make_unique<array>(*std::get<array_uptr>(rhs.data_));
+        this->data_ = std::make_unique<Array>(*std::get<ArrayUPtr>(rhs.data_));
     else if (rhs.type_ == VALUE_TYPE::OBJECT)
-        this->data_ = std::make_unique<object>(*std::get<object_uptr>(rhs.data_));
+        this->data_ = std::make_unique<Object>(*std::get<ObjectUPtr>(rhs.data_));
     else if (rhs.type_ == VALUE_TYPE::NUMBER)
         this->data_ = std::get<double>(rhs.data_);
     else if (rhs.type_ == VALUE_TYPE::STRING)
@@ -186,78 +186,78 @@ inline Value& Value::operator=(Value const& rhs) /*{{{*/
     return *(new (this) Value(rhs));
 } /*}}}*/
 
-inline Value::VALUE_TYPE Value::get_type() const /*{{{*/
+inline Value::VALUE_TYPE Value::GetType() const /*{{{*/
 {
     return type_;
 } /*}}}*/
 
-inline bool Value::get_bool() const /*{{{*/
+inline bool Value::GetBool() const /*{{{*/
 {
     assert((type_ == VALUE_TYPE::TRUE || type_ == VALUE_TYPE::FALSE) && "json value is not bool");
     return type_ == VALUE_TYPE::TRUE ? true : false;
 } /*}}}*/
 
-inline double Value::get_number() const /*{{{*/
+inline double Value::GetNumber() const /*{{{*/
 {
     assert(type_ == VALUE_TYPE::NUMBER && "json value is not number");
     return std::get<double>(data_);
 } /*}}}*/
 
-inline std::string Value::get_string() const /*{{{*/
+inline std::string Value::GetString() const /*{{{*/
 {
     assert(type_ == VALUE_TYPE::STRING && "json value is not string");
     return std::get<std::string>(data_);
 } /*}}}*/
 
-inline Value::array Value::get_array() const /*{{{*/
+inline Value::Array Value::GetArray() const /*{{{*/
 {
-    array arr;
-    if (std::get<array_uptr>(data_))
-        arr = *std::get<array_uptr>(data_);
+    Array arr;
+    if (std::get<ArrayUPtr>(data_))
+        arr = *std::get<ArrayUPtr>(data_);
     return arr;
 } /*}}}*/
 
-inline Value::object Value::get_object() const /*{{{*/
+inline Value::Object Value::GetObject() const /*{{{*/
 {
-    object obj;
-    if (std::get<object_uptr>(data_))
-        obj = *std::get<object_uptr>(data_);
+    Object obj;
+    if (std::get<ObjectUPtr>(data_))
+        obj = *std::get<ObjectUPtr>(data_);
     return obj;
 } /*}}}*/
 
-inline void Value::set_null() /*{{{*/
+inline void Value::SetNull() /*{{{*/
 {
     data_ = 0.0;
     type_ = VALUE_TYPE::NUL;
 } /*}}}*/
 
-inline void Value::set_bool(bool tf) /*{{{*/
+inline void Value::SetBool(bool tf) /*{{{*/
 {
     data_ = 0.0;
     type_ = tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE;
 } /*}}}*/
 
-inline void Value::set_number(double n) /*{{{*/
+inline void Value::SetNumber(double n) /*{{{*/
 {
     data_ = n;
     type_ = VALUE_TYPE::NUMBER;
 } /*}}}*/
 
-inline void Value::set_string(std::string&& s) /*{{{*/
+inline void Value::SetString(std::string&& s) /*{{{*/
 {
     data_ = std::move(s);
     type_ = VALUE_TYPE::STRING;
 } /*}}}*/
 
-inline void Value::set_array(array&& arr) /*{{{*/
+inline void Value::SetArray(Array&& arr) /*{{{*/
 {
-    data_ = std::make_unique<array>(std::move(arr));
+    data_ = std::make_unique<Array>(std::move(arr));
     type_ = VALUE_TYPE::ARRAY;
 } /*}}}*/
 
-inline void Value::set_object(object&& obj) /*{{{*/
+inline void Value::SetObject(Object&& obj) /*{{{*/
 {
-    data_ = std::make_unique<object>(std::move(obj));
+    data_ = std::make_unique<Object>(std::move(obj));
     type_ = VALUE_TYPE::OBJECT;
 } /*}}}*/
 
@@ -281,29 +281,29 @@ inline std::string Value::Stringify() const /*{{{*/
     }
     case VALUE_TYPE::NUMBER:
     {
-        std::string result = stringify_number();
+        std::string result = StringifyNumber();
         return result;
     }
     case VALUE_TYPE::STRING:
     {
-        std::string result = stringify_string();
+        std::string result = StringifyString();
         return result;
     }
     case VALUE_TYPE::ARRAY:
     {
-        std::string result = stringify_array();
+        std::string result = StringifyArray();
         return result;
     }
     case VALUE_TYPE::OBJECT:
     {
-        std::string result = stringify_object();
+        std::string result = StringifyObject();
         return result;
     }
     case VALUE_TYPE::INVALID: return "";
     }
 } /*}}}*/
 
-inline std::string Value::stringify_number() const /*{{{*/
+inline std::string Value::StringifyNumber() const /*{{{*/
 {
     auto              fmt        = "%.17g";
     double            number_raw = std::get<double>(data_);
@@ -314,7 +314,7 @@ inline std::string Value::stringify_number() const /*{{{*/
     return result;
 } /*}}}*/
 
-inline std::string Value::stringify_string() const /*{{{*/
+inline std::string Value::StringifyString() const /*{{{*/
 {
     std::string result = "\"";
     for (auto const& ch : std::get<std::string>(data_)) {
@@ -344,7 +344,7 @@ inline std::string Value::stringify_string() const /*{{{*/
     return result;
 } /*}}}*/
 
-inline std::string Value::stringify_string(std::string const& str) const /*{{{*/
+inline std::string Value::StringifyString(std::string_view str) const /*{{{*/
 {
     std::string result = "\"";
     for (auto const& ch : str) {
@@ -374,26 +374,26 @@ inline std::string Value::stringify_string(std::string const& str) const /*{{{*/
     return result;
 } /*}}}*/
 
-inline std::string Value::stringify_array() const /*{{{*/
+inline std::string Value::StringifyArray() const /*{{{*/
 {
     std::string result = "[ ";
-    for (int i = 0; i < std::get<array_uptr>(data_)->size(); i++) {
+    for (int i = 0; i < std::get<ArrayUPtr>(data_)->size(); i++) {
         if (i > 0)
             result += ", ";
-        result += std::get<array_uptr>(data_)->at(i).Stringify();
+        result += std::get<ArrayUPtr>(data_)->at(i).Stringify();
     }
     result += " ]";
     return result;
 } /*}}}*/
 
-inline std::string Value::stringify_object() const /*{{{*/
+inline std::string Value::StringifyObject() const /*{{{*/
 {
     std::string result = "{\n";
     int         i      = 0;
-    for (auto const& [key, val] : *(std::get<object_uptr>(data_))) {
+    for (auto const& [key, val] : *(std::get<ObjectUPtr>(data_))) {
         if (i > 0)
             result += ",\n";
-        result += stringify_string(key) + ':' + val.Stringify();
+        result += StringifyString(key) + ':' + val.Stringify();
         i++;
     }
     result += "\n}";
@@ -410,8 +410,8 @@ inline bool Value::operator==(Value const& rhs) const /*{{{*/
     if (type_ == VALUE_TYPE::STRING || type_ == VALUE_TYPE::NUMBER)
         return data_ == rhs.data_;
     if (type_ == VALUE_TYPE::ARRAY)
-        return *std::get<array_uptr>(data_) == *std::get<array_uptr>(rhs.data_);
-    return *std::get<object_uptr>(data_) == *std::get<object_uptr>(rhs.data_);
+        return *std::get<ArrayUPtr>(data_) == *std::get<ArrayUPtr>(rhs.data_);
+    return *std::get<ObjectUPtr>(data_) == *std::get<ObjectUPtr>(rhs.data_);
 } /*}}}*/
 
 /* NOTE: PARSER IMPLEMENTATION */
@@ -530,7 +530,7 @@ inline void Parser::parse_null(Value& val) /*{{{*/
 {
     if (cur_[0] == 'u' && cur_[1] == 'l' && cur_[2] == 'l') {
         cur_ += 3;
-        val.set_null();
+        val.SetNull();
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
@@ -540,7 +540,7 @@ inline void Parser::parse_true(Value& val) /*{{{*/
 {
     if (cur_[0] == 'r' && cur_[1] == 'u' && cur_[2] == 'e') {
         cur_ += 3;
-        val.set_bool(true);
+        val.SetBool(true);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
@@ -550,7 +550,7 @@ inline void Parser::parse_false(Value& val) /*{{{*/
 {
     if (cur_[0] == 'a' && cur_[1] == 'l' && cur_[2] == 's' && cur_[3] == 'e') {
         cur_ += 4;
-        val.set_bool(false);
+        val.SetBool(false);
         return;
     }
     throw std::invalid_argument("INVALID_VALUE");
@@ -602,7 +602,7 @@ inline void Parser::parse_number(Value& val) /*{{{*/
     double n = std::strtod(std::string(number_begin, cur_).c_str(), nullptr);
     if (n == HUGE_VAL || n == -HUGE_VAL)
         throw std::invalid_argument("NUMBER_TOO_BIG");
-    val.set_number(n);
+    val.SetNumber(n);
 } /*}}}*/
 
 inline std::string Parser::parse_string() /*{{{*/
@@ -686,7 +686,7 @@ inline void Parser::parse_string(Value& val) /*{{{*/
         /* deal with unescape char */
         s.push_back(*cur_++);
     }
-    val.set_string(std::move(s));
+    val.SetString(std::move(s));
     return;
 } /*}}}*/
 
@@ -709,7 +709,7 @@ inline void Parser::parse_array(Value& val) /*{{{*/
         }
     }
     ++cur_;
-    val.set_array(std::move(result));
+    val.SetArray(std::move(result));
     return;
 } /*}}}*/
 
@@ -742,7 +742,7 @@ inline void Parser::parse_object(Value& val) /*{{{*/
         }
     }
     ++cur_;
-    val.set_object(std::move(result));
+    val.SetObject(std::move(result));
     return;
 } /*}}}*/
 

@@ -24,8 +24,10 @@ endif()
 file(GLOB_RECURSE TEST_DIR_LIST "test/*.cc")
 
 add_executable(test ${TEST_DIR_LIST})
+add_executable(sample "sample/sample.cc")
 
 target_include_directories(test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(sample PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # packages
 find_package(GTest CONFIG REQUIRED)
@@ -42,13 +44,6 @@ if(magic_enum_FOUND)
 else(magic_enum_FOUND)
   message(FATAL_ERROR "magic_enum library not found")
 endif(magic_enum_FOUND)
-
-find_package(spdlog CONFIG REQUIRED)
-if(spdlog_FOUND)
-  target_link_libraries(test PRIVATE spdlog::spdlog spdlog::spdlog_header_only)
-else(spdlog_FOUND)
-  message(FATAL_ERROR "spdlog library not found")
-endif(spdlog_FOUND)
 
 if(NOT MSVC)
   find_program(CCACHE_PROGRAM ccache)
