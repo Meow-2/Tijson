@@ -7,12 +7,14 @@
 #include <cmath>
 #include <codecvt>
 #include <cstdio>
+#include <exception>
 #include <locale>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -29,7 +31,7 @@ class Value final
 
 public:
     /* the type of json value */
-    enum class VALUE_TYPE : char
+    enum class TYPE : char
     {
         NUL     = 'n',
         TRUE    = 'T',
@@ -41,7 +43,6 @@ public:
         INVALID = 'I',
     };
 
-public:
     Value() = default;
 
     // deep copy
@@ -52,17 +53,17 @@ public:
     Value& operator=(Value&&) noexcept = default;
 
     /* type check */
-    bool IsInvalid() { return type_ == VALUE_TYPE::INVALID ? true : false; }
-    bool IsNull() { return type_ == VALUE_TYPE::NUL ? true : false; }
-    bool IsTrue() { return type_ == VALUE_TYPE::TRUE ? true : false; }
-    bool IsFalse() { return type_ == VALUE_TYPE::FALSE ? true : false; }
-    bool IsNumber() { return type_ == VALUE_TYPE::NUMBER ? true : false; }
-    bool IsString() { return type_ == VALUE_TYPE::STRING ? true : false; }
-    bool IsArray() { return type_ == VALUE_TYPE::ARRAY ? true : false; }
-    bool IsObject() { return type_ == VALUE_TYPE::OBJECT ? true : false; }
+    bool IsInvalid() { return type_ == TYPE::INVALID ? true : false; }
+    bool IsNull() { return type_ == TYPE::NUL ? true : false; }
+    bool IsTrue() { return type_ == TYPE::TRUE ? true : false; }
+    bool IsFalse() { return type_ == TYPE::FALSE ? true : false; }
+    bool IsNumber() { return type_ == TYPE::NUMBER ? true : false; }
+    bool IsString() { return type_ == TYPE::STRING ? true : false; }
+    bool IsArray() { return type_ == TYPE::ARRAY ? true : false; }
+    bool IsObject() { return type_ == TYPE::OBJECT ? true : false; }
 
     /* getter setter */
-    [[nodiscard]] VALUE_TYPE  GetType() const;
+    [[nodiscard]] TYPE        GetType() const;
     [[nodiscard]] bool        GetBool() const;
     [[nodiscard]] double      GetNumber() const;
     [[nodiscard]] std::string GetString() const;
@@ -90,7 +91,7 @@ private:
     [[nodiscard]] std::string StringifyString(std::string_view) const;
 
     std::variant<double, std::string, ArrayUPtr, ObjectUPtr> data_{0.0};
-    VALUE_TYPE                                               type_{VALUE_TYPE::INVALID};
+    TYPE                                                     type_{TYPE::INVALID};
 };
 
 /* NOTE: CLASS PARSER */
@@ -119,37 +120,86 @@ private:
     Value Parse();
 
     /* parse utils */
-    Value parse_value();
-    void  parse_whitespace();
-    void  parse_null(Value&);
-    void  parse_true(Value&);
-    void  parse_false(Value&);
-    void  parse_number(Value&);
-    void  parse_string(Value&);
-    void  parse_array(Value&);
-    void  parse_object(Value&);
+    Value ParseValue();
+    void  ParseWhitespace();
+    void  ParseNull(Value&);
+    void  ParseTrue(Value&);
+    void  ParseFalse(Value&);
+    void  ParseNumber(Value&);
+    void  ParseString(Value&);
+    void  ParseArray(Value&);
+    void  ParseObject(Value&);
 
     /* parse string, return raw string */
-    std::string parse_string();
+    std::string ParseString();
 
 
     /* parse number util */
     template<char lower, char upper>
-    bool is_digital(char ch);
+    bool IsDigital(char ch);
 
     /* parse string util */
-    bool is_invalid_char(char ch);
+    bool IsInvalidChar(char ch);
 
     /* parse unicode util */
-    char16_t    parse_string_hex4();
-    std::string parse_string_utf8();
+    char16_t    ParseStringHex4();
+    std::string ParseStringUtf8();
 
     /* data */
     str_itr cur_;
     str_itr end_;
 };
+/* NOTE: ENUM CLASS PARSER ERROR CODE */
+enum class PARSE_ERROR : size_t
+{
+    NO_ERROR = 0,
+    EXPECT_VALUE,
+    INVALID_VALUE,
+    ROOT_NOT_SINGULAR,
+    NUMBER_TOO_BIG,
+    MISS_QUOTATION_MARK,
+    INVALID_STRING_ESCAPE,
+    INVALID_STRING_CHAR,
+    INVALID_UNICODE_HEX,
+    INVALID_UNICODE_SURROGATE,
+    MISS_COMMA_OR_SQUARE_BRACKET,
+    MISS_KEY,
+    MISS_COLON,
+    MISS_COMMA_OR_CURLY_BRACKET
+};
+/* NOTE: CLASS PARSER EXCEPTION */
+class ParseException : public std::exception
+{
+public:
+    ParseException() = default;
+    ParseException(PARSE_ERROR type, std::string what) : type_(type), what_(std::move(what)){};
 
-/* NOTE: PARSER EXCEPTION */
+    ParseException(ParseException const&)            = default;
+    ParseException& operator=(ParseException const&) = default;
+
+    ParseException(ParseException&&)            = default;
+    ParseException& operator=(ParseException&&) = default;
+
+    ~ParseException() noexcept override = default;
+
+    [[nodiscard]] const char* what() const noexcept override
+    {
+        return what_.empty() ? "Unknown exception" : what_.c_str();
+    }
+
+    /* construct ParseError with string matched enum */
+    template<PARSE_ERROR N>
+    static ParseException ParseErrorWithString()
+    {
+        std::string_view sv  = __PRETTY_FUNCTION__;
+        auto             pos = sv.find_last_of("::") + 1;
+        return {N, std::string(sv.substr(pos, sv.size() - pos - 1))};
+    }
+
+private:
+    std::string what_;
+    PARSE_ERROR type_;
+};
 
 /* parse json string to value, if failed, throw an exception */
 static Value Parse(std::string_view content)
@@ -158,8 +208,8 @@ static Value Parse(std::string_view content)
     try {
         result = Parser::Parse(content);
     }
-    catch (std::invalid_argument e) {
-        e.what();
+    catch (ParseException e) {
+        /* e.what(); */
     }
     return result;
 }
@@ -168,13 +218,13 @@ static Value Parse(std::string_view content)
 inline Value::Value(Value const& rhs) /*{{{*/
 {
     this->type_ = rhs.type_;
-    if (rhs.type_ == VALUE_TYPE::ARRAY)
+    if (rhs.type_ == TYPE::ARRAY)
         this->data_ = std::make_unique<Array>(*std::get<ArrayUPtr>(rhs.data_));
-    else if (rhs.type_ == VALUE_TYPE::OBJECT)
+    else if (rhs.type_ == TYPE::OBJECT)
         this->data_ = std::make_unique<Object>(*std::get<ObjectUPtr>(rhs.data_));
-    else if (rhs.type_ == VALUE_TYPE::NUMBER)
+    else if (rhs.type_ == TYPE::NUMBER)
         this->data_ = std::get<double>(rhs.data_);
-    else if (rhs.type_ == VALUE_TYPE::STRING)
+    else if (rhs.type_ == TYPE::STRING)
         this->data_ = std::get<std::string>(rhs.data_);
     else
         this->data_ = 0.0;
@@ -187,26 +237,26 @@ inline Value& Value::operator=(Value const& rhs) /*{{{*/
 } /*}}}*/
 
 // TODO: Fix variant bad access of GetObject[""], GetArray[-1]
-inline Value::VALUE_TYPE Value::GetType() const /*{{{*/
+inline Value::TYPE Value::GetType() const /*{{{*/
 {
     return type_;
 } /*}}}*/
 
 inline bool Value::GetBool() const /*{{{*/
 {
-    assert((type_ == VALUE_TYPE::TRUE || type_ == VALUE_TYPE::FALSE) && "json value is not bool");
-    return type_ == VALUE_TYPE::TRUE ? true : false;
+    assert((type_ == TYPE::TRUE || type_ == TYPE::FALSE) && "json value is not bool");
+    return type_ == TYPE::TRUE ? true : false;
 } /*}}}*/
 
 inline double Value::GetNumber() const /*{{{*/
 {
-    assert(type_ == VALUE_TYPE::NUMBER && "json value is not number");
+    assert(type_ == TYPE::NUMBER && "json value is not number");
     return std::get<double>(data_);
 } /*}}}*/
 
 inline std::string Value::GetString() const /*{{{*/
 {
-    assert(type_ == VALUE_TYPE::STRING && "json value is not string");
+    assert(type_ == TYPE::STRING && "json value is not string");
     return std::get<std::string>(data_);
 } /*}}}*/
 
@@ -229,50 +279,50 @@ inline Value::Object Value::GetObject() const /*{{{*/
 inline void Value::SetNull() /*{{{*/
 {
     data_ = 0.0;
-    type_ = VALUE_TYPE::NUL;
+    type_ = TYPE::NUL;
 } /*}}}*/
 
 inline void Value::SetBool(bool tf) /*{{{*/
 {
     data_ = 0.0;
-    type_ = tf ? VALUE_TYPE::TRUE : VALUE_TYPE::FALSE;
+    type_ = tf ? TYPE::TRUE : TYPE::FALSE;
 } /*}}}*/
 
 inline void Value::SetNumber(double n) /*{{{*/
 {
     data_ = n;
-    type_ = VALUE_TYPE::NUMBER;
+    type_ = TYPE::NUMBER;
 } /*}}}*/
 
 inline void Value::SetString(std::string&& s) /*{{{*/
 {
     data_ = std::move(s);
-    type_ = VALUE_TYPE::STRING;
+    type_ = TYPE::STRING;
 } /*}}}*/
 
 inline void Value::SetArray(Array&& arr) /*{{{*/
 {
     data_ = std::make_unique<Array>(std::move(arr));
-    type_ = VALUE_TYPE::ARRAY;
+    type_ = TYPE::ARRAY;
 } /*}}}*/
 
 inline void Value::SetObject(Object&& obj) /*{{{*/
 {
     data_ = std::make_unique<Object>(std::move(obj));
-    type_ = VALUE_TYPE::OBJECT;
+    type_ = TYPE::OBJECT;
 } /*}}}*/
 
 inline std::string Value::Stringify() const /*{{{*/
 {
     switch (type_) {
-    case VALUE_TYPE::NUL: return "null";
-    case VALUE_TYPE::TRUE: return "true";
-    case VALUE_TYPE::FALSE: return "false";
-    case VALUE_TYPE::NUMBER: return StringifyNumber();
-    case VALUE_TYPE::STRING: return StringifyString();
-    case VALUE_TYPE::ARRAY: return StringifyArray();
-    case VALUE_TYPE::OBJECT: return StringifyObject();
-    case VALUE_TYPE::INVALID: break;
+    case TYPE::NUL: return "null";
+    case TYPE::TRUE: return "true";
+    case TYPE::FALSE: return "false";
+    case TYPE::NUMBER: return StringifyNumber();
+    case TYPE::STRING: return StringifyString();
+    case TYPE::ARRAY: return StringifyArray();
+    case TYPE::OBJECT: return StringifyObject();
+    case TYPE::INVALID: break;
     }
     return "";
 } /*}}}*/
@@ -378,53 +428,35 @@ inline bool Value::operator==(Value const& rhs) const /*{{{*/
 {
     if (type_ != rhs.type_)
         return false;
-    if (type_ == VALUE_TYPE::TRUE || type_ == VALUE_TYPE::FALSE || type_ == VALUE_TYPE::NUL ||
-        type_ == VALUE_TYPE::INVALID)
+    if (type_ == TYPE::TRUE || type_ == TYPE::FALSE || type_ == TYPE::NUL || type_ == TYPE::INVALID)
         return true;
-    if (type_ == VALUE_TYPE::STRING || type_ == VALUE_TYPE::NUMBER)
+    if (type_ == TYPE::STRING || type_ == TYPE::NUMBER)
         return data_ == rhs.data_;
-    if (type_ == VALUE_TYPE::ARRAY)
+    if (type_ == TYPE::ARRAY)
         return *std::get<ArrayUPtr>(data_) == *std::get<ArrayUPtr>(rhs.data_);
     return *std::get<ObjectUPtr>(data_) == *std::get<ObjectUPtr>(rhs.data_);
 } /*}}}*/
 
 /* NOTE: PARSER IMPLEMENTATION */
-// enum class ERROR_CODE : size_t
-// {
-//     OK = 0,
-//     EXPECT_VALUE,
-//     INVALID_VALUE,
-//     ROOT_NOT_SINGULAR,
-//     NUMBER_TOO_BIG,
-//     MISS_QUOTATION_MARK,
-//     INVALID_STRING_ESCAPE,
-//     INVALID_STRING_CHAR,
-//     INVALID_UNICODE_HEX,
-//     INVALID_UNICODE_SURROGATE,
-//     MISS_COMMA_OR_SQUARE_BRACKET,
-//     MISS_KEY,
-//     MISS_COLON,
-//     MISS_COMMA_OR_CURLY_BRACKET
-// };
 inline Value Parser::Parse(std::string_view content) /*{{{*/
 {
     return Parser(content.begin(), content.end()).Parse();
 } /*}}}*/
 
-inline void Parser::parse_whitespace() /*{{{*/
+inline void Parser::ParseWhitespace() /*{{{*/
 {
     while (*cur_ == ' ' || *cur_ == '\t' || *cur_ == '\n' || *cur_ == '\r')
         cur_++;
 } /*}}}*/
 
 template<char lower, char upper> /*{{{*/
-inline bool Parser::is_digital(char ch)
+inline bool Parser::IsDigital(char ch)
 {
     /* parse number helper */
     return ch >= lower && ch <= upper;
 } /*}}}*/
 
-inline bool Parser::is_invalid_char(char ch) /*{{{*/
+inline bool Parser::IsInvalidChar(char ch) /*{{{*/
 {
     /* parse number helper */
     // unescaped = %x20-21 / %x23-5B / %x5D-10FFFF
@@ -435,7 +467,7 @@ inline bool Parser::is_invalid_char(char ch) /*{{{*/
     return static_cast<unsigned char>(ch) < '\x20';
 } /*}}}*/
 
-inline char16_t Parser::parse_string_hex4() /*{{{*/
+inline char16_t Parser::ParseStringHex4() /*{{{*/
 {
     /* parse unicode helper */
     char16_t surrogate = 0;
@@ -454,16 +486,16 @@ inline char16_t Parser::parse_string_hex4() /*{{{*/
     return surrogate;
 } /*}}}*/
 
-inline std::string Parser::parse_string_utf8() /*{{{*/
+inline std::string Parser::ParseStringUtf8() /*{{{*/
 {
     std::u16string u16;
-    char16_t       surrogate_h = parse_string_hex4();
+    char16_t       surrogate_h = ParseStringHex4();
     u16 += surrogate_h;
     if (0xD800 <= surrogate_h && surrogate_h <= 0xDBFF) {
         if (cur_[0] != '\\' || cur_[1] != 'u')
             throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
         cur_ += 2;
-        char16_t surrogate_l = parse_string_hex4();
+        char16_t surrogate_l = ParseStringHex4();
         if (surrogate_l < 0xDC00 || 0xDFFF < surrogate_l)
             throw std::invalid_argument("INVALID_UNICODE_SURROGATE");
         u16 += surrogate_l;
@@ -475,32 +507,32 @@ inline std::string Parser::parse_string_utf8() /*{{{*/
 
 inline Value Parser::Parse() /*{{{*/
 {
-    parse_whitespace();
+    ParseWhitespace();
     if (cur_ == end_)
         throw std::invalid_argument("EXPECT_VALUE");
-    Value result = parse_value();
-    parse_whitespace();
+    Value result = ParseValue();
+    ParseWhitespace();
     if (cur_ != end_)
         throw std::invalid_argument("ROOT_NOT_SINGULAR");
     return result;
 } /*}}}*/
 
-inline Value Parser::parse_value() /*{{{*/
+inline Value Parser::ParseValue() /*{{{*/
 {
     Value result;
     switch (*cur_) {
-    case 'n': ++cur_, parse_null(result); break;
-    case 't': ++cur_, parse_true(result); break;
-    case 'f': ++cur_, parse_false(result); break;
-    case '\"': ++cur_, parse_string(result); break;
-    case '[': ++cur_, parse_array(result); break;
-    case '{': ++cur_, parse_object(result); break;
-    default: parse_number(result);
+    case 'n': ++cur_, ParseNull(result); break;
+    case 't': ++cur_, ParseTrue(result); break;
+    case 'f': ++cur_, ParseFalse(result); break;
+    case '\"': ++cur_, ParseString(result); break;
+    case '[': ++cur_, ParseArray(result); break;
+    case '{': ++cur_, ParseObject(result); break;
+    default: ParseNumber(result);
     }
     return result;
 } /*}}}*/
 
-inline void Parser::parse_null(Value& val) /*{{{*/
+inline void Parser::ParseNull(Value& val) /*{{{*/
 {
     if (cur_[0] == 'u' && cur_[1] == 'l' && cur_[2] == 'l') {
         cur_ += 3;
@@ -510,7 +542,7 @@ inline void Parser::parse_null(Value& val) /*{{{*/
     throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 
-inline void Parser::parse_true(Value& val) /*{{{*/
+inline void Parser::ParseTrue(Value& val) /*{{{*/
 {
     if (cur_[0] == 'r' && cur_[1] == 'u' && cur_[2] == 'e') {
         cur_ += 3;
@@ -520,7 +552,7 @@ inline void Parser::parse_true(Value& val) /*{{{*/
     throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 
-inline void Parser::parse_false(Value& val) /*{{{*/
+inline void Parser::ParseFalse(Value& val) /*{{{*/
 {
     if (cur_[0] == 'a' && cur_[1] == 'l' && cur_[2] == 's' && cur_[3] == 'e') {
         cur_ += 4;
@@ -530,34 +562,34 @@ inline void Parser::parse_false(Value& val) /*{{{*/
     throw std::invalid_argument("INVALID_VALUE");
 } /*}}}*/
 
-inline void Parser::parse_number(Value& val) /*{{{*/
+inline void Parser::ParseNumber(Value& val) /*{{{*/
 {
     auto number_begin = cur_;
     if (*cur_ == '-')
         ++cur_;
     if (*cur_ == '0')
         ++cur_;
-    else if (is_digital<'1', '9'>(*cur_)) {
+    else if (IsDigital<'1', '9'>(*cur_)) {
         ++cur_;
-        while (is_digital<'0', '9'>(*cur_))
+        while (IsDigital<'0', '9'>(*cur_))
             ++cur_;
     }
     else
         throw std::invalid_argument("INVALID_VALUE");
     if (*cur_ == '.') {
         ++cur_;
-        if (!is_digital<'0', '9'>(*cur_))
+        if (!IsDigital<'0', '9'>(*cur_))
             throw std::invalid_argument("INVALID_VALUE");
-        while (is_digital<'0', '9'>(*cur_))
+        while (IsDigital<'0', '9'>(*cur_))
             cur_++;
     }
     if (*cur_ == 'e' || *cur_ == 'E') {
         ++cur_;
         if (*cur_ == '+' || *cur_ == '-')
             ++cur_;
-        if (!is_digital<'0', '9'>(*cur_))
+        if (!IsDigital<'0', '9'>(*cur_))
             throw std::invalid_argument("INVALID_VALUE");
-        while (is_digital<'0', '9'>(*cur_))
+        while (IsDigital<'0', '9'>(*cur_))
             ++cur_;
     }
     if (number_begin == cur_)
@@ -579,14 +611,14 @@ inline void Parser::parse_number(Value& val) /*{{{*/
     val.SetNumber(n);
 } /*}}}*/
 
-inline std::string Parser::parse_string() /*{{{*/
+inline std::string Parser::ParseString() /*{{{*/
 {
     std::string s;
     while (true) {
         if (cur_ == end_)
             throw std::invalid_argument("MISS_QUOTATION_MARK");
         /* deal with invalid char */
-        if (is_invalid_char(*cur_))
+        if (IsInvalidChar(*cur_))
             throw std::invalid_argument("INVALID_STRING_CHAR");
         if (*cur_ == '\"') {
             ++cur_;
@@ -607,7 +639,7 @@ inline std::string Parser::parse_string() /*{{{*/
             case 't': s.push_back('\t'); break;
             case 'u':
             {
-                std::string u8stirng = parse_string_utf8();
+                std::string u8stirng = ParseStringUtf8();
                 s += u8stirng;
                 break;
             }
@@ -621,14 +653,14 @@ inline std::string Parser::parse_string() /*{{{*/
     return s;
 } /*}}}*/
 
-inline void Parser::parse_string(Value& val) /*{{{*/
+inline void Parser::ParseString(Value& val) /*{{{*/
 {
     std::string s;
     while (true) {
         if (cur_ == end_)
             throw std::invalid_argument("MISS_QUOTATION_MARK");
         // deal with invalid char
-        if (is_invalid_char(*cur_))
+        if (IsInvalidChar(*cur_))
             throw std::invalid_argument("INVALID_STRING_CHAR");
         if (*cur_ == '\"') {
             ++cur_;
@@ -649,7 +681,7 @@ inline void Parser::parse_string(Value& val) /*{{{*/
             case 't': s.push_back('\t'); break;
             case 'u':
             {
-                std::string u8stirng = parse_string_utf8();
+                std::string u8stirng = ParseStringUtf8();
                 s += u8stirng;
                 break;
             }
@@ -664,17 +696,17 @@ inline void Parser::parse_string(Value& val) /*{{{*/
     return;
 } /*}}}*/
 
-inline void Parser::parse_array(Value& val) /*{{{*/
+inline void Parser::ParseArray(Value& val) /*{{{*/
 {
     std::vector<Value> result;
-    parse_whitespace();
+    ParseWhitespace();
     if (*cur_ != ']') {
         while (true) {
-            result.emplace_back(std::move(parse_value()));
-            parse_whitespace();
+            result.emplace_back(std::move(ParseValue()));
+            ParseWhitespace();
             if (*cur_ == ',') {
                 ++cur_;
-                parse_whitespace();
+                ParseWhitespace();
                 continue;
             }
             if (*cur_ == ']')
@@ -687,27 +719,27 @@ inline void Parser::parse_array(Value& val) /*{{{*/
     return;
 } /*}}}*/
 
-inline void Parser::parse_object(Value& val) /*{{{*/
+inline void Parser::ParseObject(Value& val) /*{{{*/
 {
     std::unordered_map<std::string, Value> result;
-    parse_whitespace();
+    ParseWhitespace();
     if (*cur_ != '}') {
         while (true) {
             if (*cur_ != '\"')
                 throw std::invalid_argument("MISS_KEY");
             ++cur_;
-            std::string key = parse_string();
-            parse_whitespace();
+            std::string key = ParseString();
+            ParseWhitespace();
             if (*cur_ != ':')
                 throw std::invalid_argument("MISS_COLON");
             ++cur_;
-            parse_whitespace();
-            Value val              = parse_value();
+            ParseWhitespace();
+            Value val              = ParseValue();
             result[std::move(key)] = std::move(val);
-            parse_whitespace();
+            ParseWhitespace();
             if (*cur_ == ',') {
                 ++cur_;
-                parse_whitespace();
+                ParseWhitespace();
                 continue;
             }
             if (*cur_ == '}')

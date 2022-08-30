@@ -4,10 +4,10 @@
 #include <tijson.h>
 
 // EXPECT_STREQ is used to compare char const * p
-#define EXPECT_EQ_VALUE_TYPE(TEST_VALUE, TEST_VALUE_TYPE)                             \
-    do {                                                                              \
-        EXPECT_EQ(magic_enum::enum_name(TEST_VALUE.GetType()),                        \
-                  magic_enum::enum_name(tijson::Value::VALUE_TYPE::TEST_VALUE_TYPE)); \
+#define EXPECT_EQ_VALUE_TYPE(TEST_VALUE, TEST_VALUE_TYPE)                       \
+    do {                                                                        \
+        EXPECT_EQ(magic_enum::enum_name(TEST_VALUE.GetType()),                  \
+                  magic_enum::enum_name(tijson::Value::TYPE::TEST_VALUE_TYPE)); \
     } while (0)
 
 #define EXPECT_PARSE_THROW_MESSAGE(TEST_CONTENT, TEST_MESSAGE) \
