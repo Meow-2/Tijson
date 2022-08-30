@@ -1,5 +1,5 @@
 {
   "name": "test",
   "version-string": "1.0",
-  "dependencies": ["magic-enum", "gtest", "spdlog"]
+  "dependencies": ["magic-enum", "gtest"]
 }
