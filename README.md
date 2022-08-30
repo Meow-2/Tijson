@@ -57,7 +57,7 @@
 
 ## 关于 Tijson
 
-Tijson 是我的现代 C++ 练手之作, 他支持完整的标准 Json 语法, 轻量化无内存泄漏
+Tijson 是一个基于 C++17 编写的符合标准的递归下降 Json 解析器/生成器, 跨平台(Windows/Linux/OS X), 跨编译器(MSVC/Gcc/Clang), 仅支持 UTF-8 文本, 简单轻量, 易于使用, 是我的现代 C++ 练手之作
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -115,7 +115,7 @@ std::cout << "Object[\"TIJSON\"][0]:"
 
 ## 第三方依赖
 
-Tijson 不依赖于第三方库, 仅仅只需要标准库和 Cpp17 支持
+Tijson 不依赖于第三方库, 仅仅只需要标准库和 C++17 支持
 
 如果想要运行`test`文件夹下的测试用例, 需要
 
