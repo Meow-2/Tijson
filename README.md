@@ -57,7 +57,7 @@
 
 ## 关于 Tijson
 
-Tijson 是一个基于 C++17 编写的符合标准的递归下降 Json 解析器/生成器, 跨平台(Windows/Linux/OS X), 跨编译器(MSVC/Gcc/Clang), 仅支持 UTF-8 文本, 简单轻量, 易于使用, 是我的现代 C++ 练手之作
+Tijson 是一个基于 C++17 编写的符合标准的递归下降 Json 解析器/生成器, 跨平台(Windows/Linux/OS X), 跨编译器(MSVC/Gcc/Clang), 仅支持 UTF-8 文本, 简单轻量, 易于使用, 并支持多种错误处理方式
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -73,10 +73,59 @@ Tijson 是一个 header-only 库, 只需要将本仓库中`include`文件夹下�
 
 ```cpp
 // 两种方式
-auto json_val0 = tijson::Parse(R"({"I am key":"I am value"})");
-auto json_val1 = tijson::Parser::Parse(R"({"I am key":"I am value"})");
-// auto 为 tijson::Value, json_val0, json_val1 完全相同
+auto json_val0 = tijson::Parse(R"({"Meow-2":"Tijson"})");
+auto json_val1 = tijson::Parser::Parse(R"({"Meow-2":"Tijson"})");
+// auto 为 tijson::Value, 若解析正确, json_val0, json_val1 完全相同
 ```
+
+以上两种方式的区别在于方式一在解析失败时, 将错误码写入 Value 中, 程序继续执行, 而方式二直接抛出异常, 程序中止
+
+- 错误码用例
+
+```Cpp
+auto json_val = tijson::Parse(R"({"Meow-2":"Tijson"})");
+if (json_val){
+    std::cout << json_val.Stringify() << '\n';
+}else
+    std::cout << json_val.GetParseErrorCode() << '\n';
+```
+
+错误码定义
+
+```
+enum class PARSE_ERROR : size_t
+{
+    NO_ERROR = 0,                   // 没有错误
+    EXPECT_VALUE,                   // 缺少Json值
+    INVALID_VALUE,                  // 非法的 Null、False、True 或 Number
+    ROOT_NOT_SINGULAR,              // 多个Json值
+    NUMBER_TOO_BIG,                 // Number: 数字超过了 double 的最大精度
+    MISS_QUOTATION_MARK,            // String: 引号缺失
+    INVALID_STRING_ESCAPE,          // String: 非法转义
+    INVALID_STRING_CHAR,            // String: 非法字符
+    INVALID_UNICODE_HEX,            // String: 非法的 Unicode 转义,
+                                    // \u后不足四个十六进制数
+    INVALID_UNICODE_SURROGATE,      // String: 非法的低代理项
+    MISS_COMMA_OR_SQUARE_BRACKET,   // Array: 缺少','或']'
+    MISS_KEY,                       // Object: 缺少Key
+    MISS_COLON,                     // Object: 缺少':'
+    MISS_COMMA_OR_CURLY_BRACKET     // Object: 缺少','或'}'
+};
+
+```
+
+- 异常用例
+
+```
+try{
+    auto json_val = tijson::Parse(R"({"Meow-2":"Tijson"})");
+}catch(tijson::ParseException e){
+    std::cout<<e.what();
+}
+
+```
+
+抛出异常时, 异常携带的信息为错误码对应的字符串, 与错误码含义一致, 与错误码不同的是, 如果不进行捕获, 会终止程序
 
 ### 访问
 
@@ -140,7 +189,7 @@ git submodule update --init \
 ## TODO
 
 - [ ] 优化 Get/Set 返回类型
-- [ ] 提供解析错误码作为异常之外的错误处理方式
+- [x] 提供解析错误码作为异常之外的错误处理方式
 - [ ] 添加 GetIf 作为无异常的 Get
 - [ ] 提供更加便捷的访问(Get/Set)语法糖
 - [ ] 支持 C++20 Module

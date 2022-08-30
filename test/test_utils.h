@@ -3,6 +3,11 @@
 #include <stdexcept>
 #include <tijson.h>
 
+
+// what does EXPECT_EQ_XXX do ?
+// 1. test Parse -> should be right value
+// 2. test access -> should get right type and right value
+
 // EXPECT_STREQ is used to compare char const * p
 #define EXPECT_EQ_VALUE_TYPE(TEST_VALUE, TEST_VALUE_TYPE)                       \
     do {                                                                        \
@@ -12,19 +17,23 @@
 
 #define EXPECT_PARSE_THROW_MESSAGE(TEST_CONTENT, TEST_MESSAGE) \
     do {                                                       \
-        std::invalid_argument temp("");                        \
+        tijson::ParseException temp("");                       \
         try {                                                  \
             tijson::Parser::Parse(TEST_CONTENT);               \
         }                                                      \
-        catch (std::invalid_argument & e) {                    \
+        catch (tijson::ParseException & e) {                   \
             temp = e;                                          \
         }                                                      \
         EXPECT_STREQ(temp.what(), TEST_MESSAGE);               \
     } while (0)
 
-// what does EXPECT_EQ_XXX do ?
-// 1. test Parse -> should be right value
-// 2. test access -> should get right type and right value
+#define EXPECT_PARSE_ERROR_CODE(TEST_CONTENT, TEST_ERROR_CODE)                  \
+    do {                                                                        \
+        auto v = tijson::Parse(TEST_CONTENT);                                   \
+        EXPECT_EQ(v, false);                                                    \
+        EXPECT_EQ(!v, true);                                                    \
+        EXPECT_EQ(v.GetParseErrorCode(), tijson::PARSE_ERROR::TEST_ERROR_CODE); \
+    } while (0)
 
 #define EXPECT_EQ_TRUE(TEST_CONTENT)                  \
     do {                                              \
@@ -97,5 +106,6 @@
         auto str         = v_deep_copy.Stringify();               \
         v                = std::move(tijson::Parser::Parse(str)); \
         auto v2          = tijson::Parser::Parse(str);            \
+        EXPECT_EQ(v2 != v, false);                                \
         EXPECT_EQ(v2, v);                                         \
     } while (0)
