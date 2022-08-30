@@ -39,6 +39,6 @@ int main()
     // World
     std::cout << "Object[\"TIJSON\"][0]:"
               << obj["Object"].GetObject()["TIJSON"].GetArray()[0].GetNumber() << '\n';
-    // Object:Tijson
+    // 123
     return 0;
 }
