@@ -150,8 +150,8 @@ private:
     [[nodiscard]] std::string StringifyString(std::string_view) const;
 
     std::variant<PARSE_ERROR, std::string, double, ArrayUPtr, ObjectUPtr> data_{
-        PARSE_ERROR::EXPECT_VALUE};
-    TYPE type_{TYPE::INVALID};
+        PARSE_ERROR::NO_ERROR};
+    TYPE type_{TYPE::NUL};
 };
 
 
