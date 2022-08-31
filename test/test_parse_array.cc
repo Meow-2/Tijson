@@ -14,9 +14,9 @@ TEST(PARSE_ARRAY, ARRAY)
     EXPECT_VALUE_EQ_STRING(v_deep_copy.GetArray()[4], "abc");
     v           = tijson::Parse("[ [ ] , [ 0 ] , [ 0 , 1 ] , [ 0 , 1 , 2 ] ]");
     v_deep_copy = v;
-    for (int i = 0; i < v_deep_copy.GetArray().size(); i++)
-        for (int j = 0; j < v_deep_copy.GetArray()[i].GetArray().size(); j++)
-            EXPECT_VALUE_EQ_NUMBER(v_deep_copy.GetArray()[i].GetArray()[j], j);
+    for (auto& i : v_deep_copy.GetArray())
+        for (int j = 0; j < i.GetArray().size(); j++)
+            EXPECT_VALUE_EQ_NUMBER(i.GetArray()[j], j);
 }
 
 TEST(PARSE_ARRAY, MISS_COMMA_OR_SQUARE_BRACKET)

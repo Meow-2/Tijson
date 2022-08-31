@@ -190,7 +190,7 @@ git submodule update --init \
 
 ## TODO
 
-- [ ] 优化 Get/Set 返回类型
+- [x] 优化 Get/Set 返回类型
 - [x] 提供解析错误码作为异常之外的错误处理方式
 - [ ] 添加 GetIf 作为无异常的 Get
 - [ ] 提供更加便捷的访问(Get/Set)语法糖

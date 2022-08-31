@@ -3,11 +3,9 @@
 
 /* NOTE: INCLUDE */
 
-#include <cassert>
 #include <cmath>
 #include <codecvt>
 #include <cstdio>
-#include <exception>
 #include <locale>
 #include <memory>
 #include <string>
@@ -39,7 +37,6 @@ enum class PARSE_ERROR : size_t
 };
 
 /*  NOTE: CLASS VALUE */
-
 class Value final
 {
     using Array      = std::vector<Value>;
@@ -51,6 +48,7 @@ public:
     /* the type of json value */
     enum class TYPE : char
     {
+        INVALID = 'I',
         NUL     = 'n',
         TRUE    = 'T',
         FALSE   = 'F',
@@ -58,17 +56,46 @@ public:
         NUMBER  = 'N',
         ARRAY   = 'A',
         OBJECT  = 'O',
-        INVALID = 'I',
     };
 
+    // constructor
     Value() = default;
+
+    Value(bool bl) : data_(PARSE_ERROR::NO_ERROR), type_(bl ? TYPE::TRUE : TYPE::FALSE){};
+
+    Value(double num) : data_(num), type_(TYPE::NUMBER){};
+    Value(int num) : data_(static_cast<double>(num)), type_(TYPE::NUMBER){};
+
+    Value(const char* p) : data_(std::string(p)), type_(TYPE::STRING){};
+    Value(std::string const& str) : data_(str), type_(TYPE::STRING){};
+    Value(std::string&& str) : data_(std::move(str)), type_(TYPE::STRING){};
+
+    Value(Array const& arr) : data_(std::make_unique<Array>(arr)), type_(TYPE::ARRAY){};
+    Value(Array&& arr) : data_(std::make_unique<Array>(std::move(arr))), type_(TYPE::ARRAY){};
+
+    Value(Object const& arr) : data_(std::make_unique<Object>(arr)), type_(TYPE::OBJECT){};
+    Value(Object&& arr) : data_(std::make_unique<Object>(std::move(arr))), type_(TYPE::OBJECT){};
+
+    /* Value(std::pair<char const*, Value>)       = delete; */
+    /* Value(std::pair<std::string const, Value>) = delete; */
+    /* Value(std::pair<std::string&&, Value>)     = delete; */
+
+    /* Value(std::initializer_list<std::pair<std::string const, Value>> l) */
+    /*     : data_(std::make_unique<Object>(Object(l))), type_(TYPE::OBJECT){}; */
+
+    Value(std::initializer_list<Value> l)
+        : data_(std::make_unique<Array>(Array(l))), type_(TYPE::ARRAY){};
+
+    /* template<class T> */
+    /* Value(T) = delete; */
 
     // deep copy
     Value(Value const& rhs);
     Value& operator=(Value const& rhs);
 
-    Value(Value&&) noexcept            = default;
-    Value& operator=(Value&&) noexcept = default;
+    // move
+    Value(Value&&) noexcept;
+    Value& operator=(Value&&) noexcept;
 
     /* type check */
     bool IsInvalid() { return type_ == TYPE::INVALID ? true : false; }
@@ -85,8 +112,8 @@ public:
     [[nodiscard]] bool        GetBool() const;
     [[nodiscard]] double      GetNumber() const;
     [[nodiscard]] std::string GetString() const;
-    [[nodiscard]] Array       GetArray() const;
-    [[nodiscard]] Object      GetObject() const;
+    [[nodiscard]] Array&      GetArray() const;
+    [[nodiscard]] Object&     GetObject() const;
     [[nodiscard]] PARSE_ERROR GetParseErrorCode() const;
 
     void SetInvalid(PARSE_ERROR);
@@ -100,9 +127,16 @@ public:
     /* value to json string */
     [[nodiscard]] std::string Stringify() const;
 
+    bool operator==(bool) const;
     bool operator==(Value const& rhs) const;
     bool operator!=(Value const& rhs) const;
          operator bool() const;
+
+    /* disable other '==', '==' can only use to check if the value is valid,  */
+    /* to campare Value() == std::string(), use Value().GetString() == std::string()*/
+    template<class T>
+    bool operator==(T const& arg) const = delete;
+
 
 private:
     /* stringify utils */
@@ -112,12 +146,12 @@ private:
     [[nodiscard]] std::string StringifyObject() const;
     [[nodiscard]] std::string StringifyString(std::string_view) const;
 
-    std::variant<std::string, double, ArrayUPtr, ObjectUPtr, PARSE_ERROR> data_{""};
-    TYPE                                                                  type_{TYPE::INVALID};
+    std::variant<PARSE_ERROR, std::string, double, ArrayUPtr, ObjectUPtr> data_{
+        PARSE_ERROR::EXPECT_VALUE};
+    TYPE type_{TYPE::INVALID};
 };
 
 /* NOTE: CLASS PARSER */
-
 class Parser final
 {
     using str_itr = std::string_view::iterator;
@@ -171,13 +205,14 @@ private:
     str_itr cur_;
     str_itr end_;
 };
+
 /* NOTE: CLASS PARSER EXCEPTION */
-class ParseException : public std::exception
+class ParseException : public std::exception /*{{{*/
 {
 public:
     ParseException() = default;
     ParseException(std::string what) : what_(std::move(what)){};
-    ParseException(PARSE_ERROR type, std::string what) : type_(type), what_(std::move(what)){};
+    ParseException(PARSE_ERROR type, std::string what) : what_(std::move(what)), type_(type){};
 
     ParseException(ParseException const&)            = default;
     ParseException& operator=(ParseException const&) = default;
@@ -207,7 +242,31 @@ public:
 private:
     std::string what_;
     PARSE_ERROR type_;
-};
+}; /*}}}*/
+
+/* NOTE: CLASS Access EXCEPTION */
+class AccessException : public std::exception /*{{{*/
+{
+public:
+    AccessException() = default;
+    AccessException(std::string what) : what_(std::move(what)){};
+
+    AccessException(AccessException const&)            = default;
+    AccessException& operator=(AccessException const&) = default;
+
+    AccessException(AccessException&&)            = default;
+    AccessException& operator=(AccessException&&) = default;
+
+    ~AccessException() noexcept override = default;
+
+    [[nodiscard]] const char* what() const noexcept override
+    {
+        return what_.empty() ? "Unknown exception" : what_.c_str();
+    }
+
+private:
+    std::string what_;
+}; /*}}}*/
 
 /* parse json string to value, if failed, throw an exception */
 static Value Parse(std::string_view content)
@@ -235,13 +294,28 @@ inline Value::Value(Value const& rhs) /*{{{*/
     else if (rhs.type_ == TYPE::STRING)
         this->data_ = std::get<std::string>(rhs.data_);
     else
-        this->data_ = "";
+        this->data_ = PARSE_ERROR::NO_ERROR;
 } /*}}}*/
 
 inline Value& Value::operator=(Value const& rhs) /*{{{*/
 {
     this->~Value();
     return *(new (this) Value(rhs));
+} /*}}}*/
+
+inline Value::Value(Value&& rhs) noexcept : data_(std::move(rhs.data_)), type_(rhs.type_) /*{{{*/
+{
+    rhs.data_ = PARSE_ERROR::EXPECT_VALUE;
+    rhs.type_ = TYPE::INVALID;
+} /*}}}*/
+
+inline Value& Value::operator=(Value&& rhs) noexcept /*{{{*/
+{
+    data_     = std::move(rhs.data_);
+    type_     = rhs.type_;
+    rhs.data_ = PARSE_ERROR::EXPECT_VALUE;
+    rhs.type_ = TYPE::INVALID;
+    return *this;
 } /*}}}*/
 
 // TODO: Fix variant bad access of GetObject[""], GetArray[-1]
@@ -257,36 +331,38 @@ inline PARSE_ERROR Value::GetParseErrorCode() const /*{{{*/
 
 inline bool Value::GetBool() const /*{{{*/
 {
-    assert((type_ == TYPE::TRUE || type_ == TYPE::FALSE) && "json value is not bool");
-    return type_ == TYPE::TRUE ? true : false;
+    if (type_ == TYPE::TRUE || type_ == TYPE::FALSE)
+        return type_ == TYPE::TRUE ? true : false;
+    throw AccessException("VALUE_NOT_BOOL");
 } /*}}}*/
 
 inline double Value::GetNumber() const /*{{{*/
 {
-    assert(type_ == TYPE::NUMBER && "json value is not number");
-    return std::get<double>(data_);
+    if (type_ == TYPE::NUMBER)
+        return std::get<double>(data_);
+    throw AccessException("VALUE_NOT_NUMBER");
 } /*}}}*/
 
 inline std::string Value::GetString() const /*{{{*/
 {
-    assert(type_ == TYPE::STRING && "json value is not string");
-    return std::get<std::string>(data_);
+    if (type_ == TYPE::STRING)
+        return std::get<std::string>(data_);
+    throw AccessException("VALUE_NOT_STRING");
 } /*}}}*/
 
-inline Value::Array Value::GetArray() const /*{{{*/
+inline Value::Array& Value::GetArray() const /*{{{*/
 {
-    Array arr;
-    if (std::get<ArrayUPtr>(data_))
-        arr = *std::get<ArrayUPtr>(data_);
-    return arr;
+
+    if (type_ == TYPE::ARRAY)
+        return *std::get<ArrayUPtr>(data_);
+    throw AccessException("VALUE_NOT_ARRAY");
 } /*}}}*/
 
-inline Value::Object Value::GetObject() const /*{{{*/
+inline Value::Object& Value::GetObject() const /*{{{*/
 {
-    Object obj;
-    if (std::get<ObjectUPtr>(data_))
-        obj = *std::get<ObjectUPtr>(data_);
-    return obj;
+    if (type_ == TYPE::OBJECT)
+        return *std::get<ObjectUPtr>(data_);
+    throw AccessException("VALUE_NOT_OBJECT");
 } /*}}}*/
 
 inline void Value::SetInvalid(PARSE_ERROR parse_error) /*{{{*/
@@ -297,13 +373,13 @@ inline void Value::SetInvalid(PARSE_ERROR parse_error) /*{{{*/
 
 inline void Value::SetNull() /*{{{*/
 {
-    data_ = "";
+    data_ = PARSE_ERROR::NO_ERROR;
     type_ = TYPE::NUL;
 } /*}}}*/
 
 inline void Value::SetBool(bool tf) /*{{{*/
 {
-    data_ = "";
+    data_ = PARSE_ERROR::NO_ERROR;
     type_ = tf ? TYPE::TRUE : TYPE::FALSE;
 } /*}}}*/
 
@@ -373,11 +449,12 @@ inline std::string Value::StringifyString() const /*{{{*/
         default:
             auto temp = static_cast<unsigned char>(ch);
             if (temp < 0x20) {
-                auto              fmt = "\\u%04X";
-                auto              sz  = std::snprintf(nullptr, 0, fmt, temp);
-                std::vector<char> buf(sz + 1);
+                auto        fmt = "\\u%04X";
+                auto        sz  = std::snprintf(nullptr, 0, fmt, temp);
+                std::string buf(sz + 1, '\0');
                 std::sprintf(&buf[0], fmt, temp);
-                result.append(std::string(buf.begin(), buf.end() - 1));
+                buf.pop_back();
+                result += buf;
             }
             else
                 result += ch;
@@ -403,11 +480,12 @@ inline std::string Value::StringifyString(std::string_view str) const /*{{{*/
         default:
             auto temp = static_cast<unsigned char>(ch);
             if (temp < 0x20) {
-                auto              fmt = "\\u04X";
-                auto              sz  = std::snprintf(nullptr, 0, fmt, temp);
-                std::vector<char> buf(sz + 1);
+                auto        fmt = "\\u04X";
+                auto        sz  = std::snprintf(nullptr, 0, fmt, temp);
+                std::string buf(sz + 1, '\0');
                 std::sprintf(&buf[0], fmt, temp);
-                result.append(std::string(buf.begin(), buf.end() - 1));
+                buf.pop_back();
+                result += buf;
             }
             else
                 result += ch;
@@ -443,6 +521,12 @@ inline std::string Value::StringifyObject() const /*{{{*/
     return result;
 } /*}}}*/
 
+inline bool Value::operator==(bool rhs) const /*{{{*/
+{
+    // `if (Value == true) ` will use this, rather than Implicit transformation
+    return static_cast<bool>(*this) == rhs;
+} /*}}}*/
+
 inline bool Value::operator==(Value const& rhs) const /*{{{*/
 {
     if (type_ != rhs.type_)
@@ -456,15 +540,15 @@ inline bool Value::operator==(Value const& rhs) const /*{{{*/
     return *std::get<ObjectUPtr>(data_) == *std::get<ObjectUPtr>(rhs.data_);
 } /*}}}*/
 
-inline bool Value::operator!=(Value const& rhs) const
+inline bool Value::operator!=(Value const& rhs) const /*{{{*/
 {
     return !(this->operator==(rhs));
-}
+} /*}}}*/
 
-inline Value::operator bool() const
+inline Value::operator bool() const /*{{{*/
 {
     return type_ == TYPE::INVALID ? false : true;
-}
+} /*}}}*/
 
 /* NOTE: PARSER IMPLEMENTATION */
 inline Value Parser::Parse(std::string_view content) /*{{{*/
@@ -733,7 +817,7 @@ inline void Parser::ParseArray(Value& val) /*{{{*/
     ParseWhitespace();
     if (*cur_ != ']') {
         while (true) {
-            result.emplace_back(std::move(ParseValue()));
+            result.emplace_back(ParseValue());
             ParseWhitespace();
             if (*cur_ == ',') {
                 ++cur_;

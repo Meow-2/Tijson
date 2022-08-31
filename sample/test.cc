@@ -1,7 +1,8 @@
 #include "../include/tijson.h"
 
 #include <iostream>
-
+#include <ostream>
+using namespace std;
 template<class T, T N>
 std::string GetStringFromTN()
 {
@@ -16,50 +17,40 @@ std::string GetStringFromERROR(T n)
         return GetStringFromTN<T, (T)1>();
 };
 
-
-enum class ERROR_TYPE : size_t
+enum class ERROR_TYPE : char
 {
-    NO_ERROR = 0,
+    NO_ERROR = 'N',
     EXPECT_VALUE,
-    INVALID_VALUE,
-    ROOT_NOT_SINGULAR,
-    NUMBER_TOO_BIG,
-    MISS_QUOTATION_MARK,
-    INVALID_STRING_ESCAPE,
-    INVALID_STRING_CHAR,
-    INVALID_UNICODE_HEX,
-    INVALID_UNICODE_SURROGATE,
-    MISS_COMMA_OR_SQUARE_BRACKET,
-    MISS_KEY,
-    MISS_COLON,
-    MISS_COMMA_OR_CURLY_BRACKET
 };
 
+ostream& operator<<(ostream& x, ERROR_TYPE const& y)
+{
+    if (y == ERROR_TYPE::NO_ERROR)
+        return x << "NO_ERROR";
+    if (y == ERROR_TYPE::EXPECT_VALUE)
+        return x << "ERROR_TYPE";
+    return x;
+}
 int main()
 {
-    std::cout << GetStringFromTN<ERROR_TYPE, ERROR_TYPE::NO_ERROR>() << '\n';
-    /* std::cout << fun<ERROR_TYPE::NO_ERROR>() << '\n'; */
+    /* ERROR_TYPE a = ERROR_TYPE::EXPECT_VALUE; */
+    /* std::cout << a; */
+    auto v  = tijson::Parse("[ null , false , true , 124 , \"abc\" ]");
+    auto v2 = v;
+    std::cout << v2.Stringify();
+    auto& arr = v2.GetArray();
+    v         = 5;
+    std::cout << v2.Stringify();
+    std::cout << v.Stringify();
+    /* v = {123, 213, 123}; */
+    /* v                = {"asda", "123", 213, false, true}; */
+    tijson::Value v3 = {
+        {"asdasda", true},
+        {"asdsda", false},
+        {"asda", {3123, 2133, 12312}},
+    };
+    std::cout << v3.Stringify();
+    /* if (v == "asdasd") {}; */
+    /* std::cout << (a == ERROR_TYPE::NO_ERROR) << '\n'; */
+    /* std::cout << GetStringFromTN<ERROR_TYPE, ERROR_TYPE::NO_ERROR>() << '\n'; */
 }
-/* std::string content = R"( */
-/* { */
-/* "repo": "meojson", */
-/* "author": { */
-/*     "MistEO": "https://github.com/MistEO", */
-/*     "ChingCdesu": "https://github.com/ChingCdesu" */
-/* }, */
-/* "list": [ */
-/*     1, */
-/*     2, */
-/*     3 */
-/* ], */
-/* "str": "abc", */
-/* "num": 3.1416, */
-/* "A_obj": { */
-/*     "B_arr": [ */
-/*         { */
-/*             "C_str": "you found me!" */
-/*         } */
-/*     ] */
-/* } */
-/* } */
-/* )"; */
