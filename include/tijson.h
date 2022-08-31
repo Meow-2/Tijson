@@ -17,13 +17,6 @@
 
 namespace tijson {
 
-class Value;
-
-using Array      = std::vector<Value>;
-using Object     = std::unordered_map<std::string, Value>;
-using ArrayUPtr  = std::unique_ptr<Array>;
-using ObjectUPtr = std::unique_ptr<Object>;
-
 /* NOTE: ENUM CLASS PARSER ERROR CODE */
 enum class PARSE_ERROR : size_t
 {
@@ -43,9 +36,30 @@ enum class PARSE_ERROR : size_t
     MISS_COMMA_OR_CURLY_BRACKET
 };
 
+enum class ACCESS_ERROR : size_t
+{
+    NO_ERROR = 0,
+    ACCESS_WRONG_TYPE,
+};
+
+template<class T>
+class Exception;
+/*  NOTE: CUSTOM EXCEPTION */
+using ParseException  = Exception<PARSE_ERROR>;
+using AccessException = Exception<ACCESS_ERROR>;
+
+class Value;
+/* NOTE: JSON ARRAY AND OBJECT */
+using Array  = std::vector<Value>;
+using Object = std::unordered_map<std::string, Value>;
+
 /*  NOTE: CLASS VALUE */
 class Value final
 {
+
+    using ArrayUPtr  = std::unique_ptr<Array>;
+    using ObjectUPtr = std::unique_ptr<Object>;
+
 public:
     /* the type of json value */
     enum class TYPE : char
@@ -197,20 +211,21 @@ private:
 };
 
 /* NOTE: CLASS PARSER EXCEPTION */
-class ParseException : public std::exception /*{{{*/
+template<class T>
+class Exception : public std::exception
 {
 public:
-    ParseException() = default;
-    ParseException(std::string what) : what_(std::move(what)){};
-    ParseException(PARSE_ERROR type, std::string what) : what_(std::move(what)), type_(type){};
+    Exception() = default;
+    Exception(std::string what) : what_(std::move(what)){};
+    Exception(T type, std::string what) : what_(std::move(what)), type_(type){};
 
-    ParseException(ParseException const&)            = default;
-    ParseException& operator=(ParseException const&) = default;
+    Exception(Exception const&)            = default;
+    Exception& operator=(Exception const&) = default;
 
-    ParseException(ParseException&&)            = default;
-    ParseException& operator=(ParseException&&) = default;
+    Exception(Exception&&) noexcept            = default;
+    Exception& operator=(Exception&&) noexcept = default;
 
-    ~ParseException() noexcept override = default;
+    ~Exception() noexcept override = default;
 
     [[nodiscard]] const char* what() const noexcept override
     {
@@ -218,45 +233,23 @@ public:
     }
 
     /* get error_code */
-    PARSE_ERROR GetParseErrorCode() { return type_; }
+    T GetErrorCode() { return type_; }
 
     /* construct ParseError with string matched enum */
-    template<PARSE_ERROR N>
-    static ParseException ParseErrorWithString()
+    template<T N>
+    static Exception ConstructWithErrorCode()
     {
         std::string_view sv  = __PRETTY_FUNCTION__;
-        auto             pos = sv.find_last_of("::") + 1;
-        return {N, std::string(sv.substr(pos, sv.size() - pos - 1))};
+        auto             pos = sv.find("N = tijson::") + 12;
+        pos                  = sv.find_first_of("::", pos) + 2;
+        auto end_pos         = sv.find_first_of(';', pos);
+        return {N, std::string(sv.substr(pos, end_pos - pos))};
     }
 
 private:
     std::string what_;
-    PARSE_ERROR type_;
-}; /*}}}*/
-
-/* NOTE: CLASS Access EXCEPTION */
-class AccessException : public std::exception /*{{{*/
-{
-public:
-    AccessException() = default;
-    AccessException(std::string what) : what_(std::move(what)){};
-
-    AccessException(AccessException const&)            = default;
-    AccessException& operator=(AccessException const&) = default;
-
-    AccessException(AccessException&&)            = default;
-    AccessException& operator=(AccessException&&) = default;
-
-    ~AccessException() noexcept override = default;
-
-    [[nodiscard]] const char* what() const noexcept override
-    {
-        return what_.empty() ? "Unknown exception" : what_.c_str();
-    }
-
-private:
-    std::string what_;
-}; /*}}}*/
+    T           type_;
+};
 
 /* parse json string to value, if failed, throw an exception */
 static Value Parse(std::string_view content)
@@ -265,8 +258,8 @@ static Value Parse(std::string_view content)
     try {
         result = Parser::Parse(content);
     }
-    catch (ParseException e) {
-        result.SetInvalid(e.GetParseErrorCode());
+    catch (ParseException& e) {
+        result.SetInvalid(e.GetErrorCode());
     }
     return result;
 }
@@ -583,7 +576,7 @@ inline char16_t Parser::ParseStringHex4() /*{{{*/
         else if ('A' <= *cur_ && *cur_ <= 'F')
             surrogate |= *cur_ - ('A' - 10);
         else
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_UNICODE_HEX>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_UNICODE_HEX>();
         ++cur_;
     }
     return surrogate;
@@ -596,11 +589,11 @@ inline std::string Parser::ParseStringUtf8() /*{{{*/
     u16 += surrogate_h;
     if (0xD800 <= surrogate_h && surrogate_h <= 0xDBFF) {
         if (cur_[0] != '\\' || cur_[1] != 'u')
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_UNICODE_SURROGATE>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_UNICODE_SURROGATE>();
         cur_ += 2;
         char16_t surrogate_l = ParseStringHex4();
         if (surrogate_l < 0xDC00 || 0xDFFF < surrogate_l)
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_UNICODE_SURROGATE>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_UNICODE_SURROGATE>();
         u16 += surrogate_l;
     }
     std::string u8_conv =
@@ -612,11 +605,11 @@ inline Value Parser::Parse() /*{{{*/
 {
     ParseWhitespace();
     if (cur_ == end_)
-        throw ParseException::ParseErrorWithString<PARSE_ERROR::EXPECT_VALUE>();
+        throw ParseException::ConstructWithErrorCode<PARSE_ERROR::EXPECT_VALUE>();
     Value result = ParseValue();
     ParseWhitespace();
     if (cur_ != end_)
-        throw ParseException::ParseErrorWithString<PARSE_ERROR::ROOT_NOT_SINGULAR>();
+        throw ParseException::ConstructWithErrorCode<PARSE_ERROR::ROOT_NOT_SINGULAR>();
     return result;
 } /*}}}*/
 
@@ -642,7 +635,7 @@ inline void Parser::ParseNull(Value& val) /*{{{*/
         val.SetNull();
         return;
     }
-    throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_VALUE>();
+    throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_VALUE>();
 } /*}}}*/
 
 inline void Parser::ParseTrue(Value& val) /*{{{*/
@@ -652,7 +645,7 @@ inline void Parser::ParseTrue(Value& val) /*{{{*/
         val.SetBool(true);
         return;
     }
-    throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_VALUE>();
+    throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_VALUE>();
 } /*}}}*/
 
 inline void Parser::ParseFalse(Value& val) /*{{{*/
@@ -662,7 +655,7 @@ inline void Parser::ParseFalse(Value& val) /*{{{*/
         val.SetBool(false);
         return;
     }
-    throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_VALUE>();
+    throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_VALUE>();
 } /*}}}*/
 
 inline void Parser::ParseNumber(Value& val) /*{{{*/
@@ -678,11 +671,11 @@ inline void Parser::ParseNumber(Value& val) /*{{{*/
             ++cur_;
     }
     else
-        throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_VALUE>();
+        throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_VALUE>();
     if (*cur_ == '.') {
         ++cur_;
         if (!IsDigital<'0', '9'>(*cur_))
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_VALUE>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_VALUE>();
         while (IsDigital<'0', '9'>(*cur_))
             cur_++;
     }
@@ -691,12 +684,12 @@ inline void Parser::ParseNumber(Value& val) /*{{{*/
         if (*cur_ == '+' || *cur_ == '-')
             ++cur_;
         if (!IsDigital<'0', '9'>(*cur_))
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_VALUE>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_VALUE>();
         while (IsDigital<'0', '9'>(*cur_))
             ++cur_;
     }
     if (number_begin == cur_)
-        throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_VALUE>();
+        throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_VALUE>();
     // Abort: stod() If the converted value would fall out of the range, will throw an out_of_range
     // exception And std::stod() will throw out_of_range exception when converts subnormal value
     // https://stackoverflow.com/questions/48086830/stdstod-throws-out-of-range-error-for-a-string-that-should-be-valid
@@ -710,7 +703,7 @@ inline void Parser::ParseNumber(Value& val) /*{{{*/
     // }
     double n = std::strtod(std::string(number_begin, cur_).c_str(), nullptr);
     if (n == HUGE_VAL || n == -HUGE_VAL)
-        throw ParseException::ParseErrorWithString<PARSE_ERROR::NUMBER_TOO_BIG>();
+        throw ParseException::ConstructWithErrorCode<PARSE_ERROR::NUMBER_TOO_BIG>();
     val.SetNumber(n);
 } /*}}}*/
 
@@ -719,10 +712,10 @@ inline std::string Parser::ParseString() /*{{{*/
     std::string s;
     while (true) {
         if (cur_ == end_)
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::MISS_QUOTATION_MARK>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::MISS_QUOTATION_MARK>();
         /* deal with invalid char */
         if (IsInvalidChar(*cur_))
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_STRING_CHAR>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_STRING_CHAR>();
         if (*cur_ == '\"') {
             ++cur_;
             break;
@@ -730,7 +723,7 @@ inline std::string Parser::ParseString() /*{{{*/
         /* deal with escape */
         if (*cur_ == '\\') {
             if (++cur_ == end_)
-                throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_STRING_ESCAPE>();
+                throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_STRING_ESCAPE>();
             switch (*cur_++) {
             case '\"': s.push_back('\"'); break;
             case '\\': s.push_back('\\'); break;
@@ -747,7 +740,7 @@ inline std::string Parser::ParseString() /*{{{*/
                 break;
             }
             default:
-                throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_STRING_ESCAPE>();
+                throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_STRING_ESCAPE>();
             }
             continue;
         }
@@ -762,10 +755,10 @@ inline void Parser::ParseString(Value& val) /*{{{*/
     std::string s;
     while (true) {
         if (cur_ == end_)
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::MISS_QUOTATION_MARK>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::MISS_QUOTATION_MARK>();
         // deal with invalid char
         if (IsInvalidChar(*cur_))
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_STRING_CHAR>();
+            throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_STRING_CHAR>();
         if (*cur_ == '\"') {
             ++cur_;
             break;
@@ -773,7 +766,7 @@ inline void Parser::ParseString(Value& val) /*{{{*/
         /* deal with escape */
         if (*cur_ == '\\') {
             if (++cur_ == end_)
-                throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_STRING_ESCAPE>();
+                throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_STRING_ESCAPE>();
             switch (*cur_++) {
             case '\"': s.push_back('\"'); break;
             case '\\': s.push_back('\\'); break;
@@ -790,7 +783,7 @@ inline void Parser::ParseString(Value& val) /*{{{*/
                 break;
             }
             default:
-                throw ParseException::ParseErrorWithString<PARSE_ERROR::INVALID_STRING_ESCAPE>();
+                throw ParseException::ConstructWithErrorCode<PARSE_ERROR::INVALID_STRING_ESCAPE>();
             }
             continue;
         }
@@ -816,7 +809,8 @@ inline void Parser::ParseArray(Value& val) /*{{{*/
             }
             if (*cur_ == ']')
                 break;
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::MISS_COMMA_OR_SQUARE_BRACKET>();
+            throw ParseException::ConstructWithErrorCode<
+                PARSE_ERROR::MISS_COMMA_OR_SQUARE_BRACKET>();
         }
     }
     ++cur_;
@@ -831,12 +825,12 @@ inline void Parser::ParseObject(Value& val) /*{{{*/
     if (*cur_ != '}') {
         while (true) {
             if (*cur_ != '\"')
-                throw ParseException::ParseErrorWithString<PARSE_ERROR::MISS_KEY>();
+                throw ParseException::ConstructWithErrorCode<PARSE_ERROR::MISS_KEY>();
             ++cur_;
             std::string key = ParseString();
             ParseWhitespace();
             if (*cur_ != ':')
-                throw ParseException::ParseErrorWithString<PARSE_ERROR::MISS_COLON>();
+                throw ParseException::ConstructWithErrorCode<PARSE_ERROR::MISS_COLON>();
             ++cur_;
             ParseWhitespace();
             Value val              = ParseValue();
@@ -849,7 +843,8 @@ inline void Parser::ParseObject(Value& val) /*{{{*/
             }
             if (*cur_ == '}')
                 break;
-            throw ParseException::ParseErrorWithString<PARSE_ERROR::MISS_COMMA_OR_CURLY_BRACKET>();
+            throw ParseException::ConstructWithErrorCode<
+                PARSE_ERROR::MISS_COMMA_OR_CURLY_BRACKET>();
         }
     }
     ++cur_;

@@ -31,8 +31,49 @@ ostream& operator<<(ostream& x, ERROR_TYPE const& y)
         return x << "ERROR_TYPE";
     return x;
 }
+template<class T>
+class Exception : public std::exception
+{
+public:
+    Exception() = default;
+    Exception(std::string what) : what_(std::move(what)){};
+    Exception(T type, std::string what) : what_(std::move(what)), type_(type){};
+
+    Exception(Exception const&)            = default;
+    Exception& operator=(Exception const&) = default;
+
+    Exception(Exception&&) noexcept            = default;
+    Exception& operator=(Exception&&) noexcept = default;
+
+    ~Exception() noexcept override = default;
+
+    [[nodiscard]] const char* what() const noexcept override
+    {
+        return what_.empty() ? "Unknown exception" : what_.c_str();
+    }
+
+    /* get error_code */
+    T GetErrorCode() { return type_; }
+
+    /* construct ParseError with string matched enum */
+    template<T N>
+    static Exception ConstructWithErrorCode()
+    {
+        std::string_view sv  = __PRETTY_FUNCTION__;
+        auto             pos = sv.find_last_of("::") + 1;
+        return {N, std::string(sv.substr(pos, sv.size() - pos - 1))};
+    }
+
+private:
+    std::string what_;
+    T           type_;
+};
+
 int main()
 {
+    using ab = Exception<ERROR_TYPE>;
+    auto a   = ab::ConstructWithErrorCode<ERROR_TYPE::NO_ERROR>();
+    std::cout << a.what();
     /* ERROR_TYPE a = ERROR_TYPE::EXPECT_VALUE; */
     /* std::cout << a; */
     auto v  = tijson::Parse("[ null , false , true , 124 , \"abc\" ]");
