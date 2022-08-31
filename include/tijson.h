@@ -17,6 +17,13 @@
 
 namespace tijson {
 
+class Value;
+
+using Array      = std::vector<Value>;
+using Object     = std::unordered_map<std::string, Value>;
+using ArrayUPtr  = std::unique_ptr<Array>;
+using ObjectUPtr = std::unique_ptr<Object>;
+
 /* NOTE: ENUM CLASS PARSER ERROR CODE */
 enum class PARSE_ERROR : size_t
 {
@@ -39,11 +46,6 @@ enum class PARSE_ERROR : size_t
 /*  NOTE: CLASS VALUE */
 class Value final
 {
-    using Array      = std::vector<Value>;
-    using Object     = std::unordered_map<std::string, Value>;
-    using ArrayUPtr  = std::unique_ptr<Array>;
-    using ObjectUPtr = std::unique_ptr<Object>;
-
 public:
     /* the type of json value */
     enum class TYPE : char
@@ -75,19 +77,6 @@ public:
 
     Value(Object const& arr) : data_(std::make_unique<Object>(arr)), type_(TYPE::OBJECT){};
     Value(Object&& arr) : data_(std::make_unique<Object>(std::move(arr))), type_(TYPE::OBJECT){};
-
-    /* Value(std::pair<char const*, Value>)       = delete; */
-    /* Value(std::pair<std::string const, Value>) = delete; */
-    /* Value(std::pair<std::string&&, Value>)     = delete; */
-
-    /* Value(std::initializer_list<std::pair<std::string const, Value>> l) */
-    /*     : data_(std::make_unique<Object>(Object(l))), type_(TYPE::OBJECT){}; */
-
-    Value(std::initializer_list<Value> l)
-        : data_(std::make_unique<Array>(Array(l))), type_(TYPE::ARRAY){};
-
-    /* template<class T> */
-    /* Value(T) = delete; */
 
     // deep copy
     Value(Value const& rhs);
@@ -150,6 +139,7 @@ private:
         PARSE_ERROR::EXPECT_VALUE};
     TYPE type_{TYPE::INVALID};
 };
+
 
 /* NOTE: CLASS PARSER */
 class Parser final
@@ -350,7 +340,7 @@ inline std::string Value::GetString() const /*{{{*/
     throw AccessException("VALUE_NOT_STRING");
 } /*}}}*/
 
-inline Value::Array& Value::GetArray() const /*{{{*/
+inline Array& Value::GetArray() const /*{{{*/
 {
 
     if (type_ == TYPE::ARRAY)
@@ -358,7 +348,7 @@ inline Value::Array& Value::GetArray() const /*{{{*/
     throw AccessException("VALUE_NOT_ARRAY");
 } /*}}}*/
 
-inline Value::Object& Value::GetObject() const /*{{{*/
+inline Object& Value::GetObject() const /*{{{*/
 {
     if (type_ == TYPE::OBJECT)
         return *std::get<ObjectUPtr>(data_);

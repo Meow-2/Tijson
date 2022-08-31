@@ -43,14 +43,32 @@ int main()
     std::cout << v2.Stringify();
     std::cout << v.Stringify();
     /* v = {123, 213, 123}; */
-    /* v                = {"asda", "123", 213, false, true}; */
-    tijson::Value v3 = {
-        {"asdasda", true},
-        {"asdsda", false},
-        {"asda", {3123, 2133, 12312}},
-    };
-    std::cout << v3.Stringify();
+    /* v.SetArray({"asda", "123", {213, false}, true}); */
+    std::cout << v.Stringify();
+    /* v.SetObject({ */
+    /*     {"asdasda", true}, */
+    /*     {"asdsda", false}, */
+    /*     {"asda", {"asdasd", true}}, */
+    /* }); */
+    std::cout << v.Stringify();
     /* if (v == "asdasd") {}; */
     /* std::cout << (a == ERROR_TYPE::NO_ERROR) << '\n'; */
     /* std::cout << GetStringFromTN<ERROR_TYPE, ERROR_TYPE::NO_ERROR>() << '\n'; */
+    v                = tijson::Array({123, 123, tijson::Array({123, 123})});
+    tijson::Value v4 = v.GetArray();
+
+    std::cout << v.Stringify();
+    v = 5;
+    std::cout << v4.Stringify();
+    /* v = tijson::Object({ */
+    /*     {"meow-2", "tijosn"}, */
+    /*     {"tijson", true}, */
+    /*     {"asd", tijson::Array({123, 123, 123})}, */
+    /*     {"asdasd", tijson::Object({ */
+    /*                    {"asdasadsas", true}, */
+    /*                    {"meow-2", "tijosn"}, */
+    /*                    {"tijson", true}, */
+    /*                })}, */
+    /* }); */
+    /* std::cout << v.Stringify(); */
 }
