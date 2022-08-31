@@ -40,6 +40,7 @@ enum class ACCESS_ERROR : size_t
 {
     NO_ERROR = 0,
     ACCESS_WRONG_TYPE,
+    ARRAY_INDEX_OUT_OF_RANGE,
 };
 
 template<class T>
@@ -139,6 +140,10 @@ public:
     /* to campare Value() == std::string(), use Value().GetString() == std::string()*/
     template<class T>
     bool operator==(T const& arg) const = delete;
+
+    Value& operator[](size_t) const;
+    Value& operator[](std::string const&) const;
+    Value& operator[](char const* p) const;
 
 
 private:
@@ -531,6 +536,35 @@ inline bool Value::operator!=(Value const& rhs) const /*{{{*/
 inline Value::operator bool() const /*{{{*/
 {
     return type_ == TYPE::INVALID ? false : true;
+} /*}}}*/
+
+inline Value& Value::operator[](size_t index) const /*{{{*/
+{
+    if (type_ == TYPE::ARRAY) {
+        auto const& uptr = std::get<ArrayUPtr>(data_);
+        if (index >= uptr->size())
+            throw AccessException("ARRAY_INDEX_OUT_OF_RANGE");
+        return (*uptr)[index];
+    }
+    throw AccessException("VALUE_NOT_ARRAY");
+} /*}}}*/
+
+inline Value& Value::operator[](std::string const& key) const /*{{{*/
+{
+    if (type_ == TYPE::OBJECT) {
+        auto const& uptr = std::get<ObjectUPtr>(data_);
+        return (*uptr)[key];
+    }
+    throw AccessException("VALUE_NOT_OBJECT");
+} /*}}}*/
+
+inline Value& Value::operator[](char const* key) const /*{{{*/
+{
+    if (type_ == TYPE::OBJECT) {
+        auto const& uptr = std::get<ObjectUPtr>(data_);
+        return (*uptr)[key];
+    }
+    throw AccessException("VALUE_NOT_OBJECT");
 } /*}}}*/
 
 /* NOTE: PARSER IMPLEMENTATION */

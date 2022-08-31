@@ -192,8 +192,8 @@ git submodule update --init \
 
 - [x] 优化 Get/Set 返回类型
 - [x] 提供解析错误码作为异常之外的错误处理方式
+- [x] 提供更加便捷的访问(Get/Set)语法糖
 - [ ] 添加 GetIf 作为无异常的 Get
-- [ ] 提供更加便捷的访问(Get/Set)语法糖
 - [ ] 支持 C++20 Module
 - [ ] 使用 C++20 std::format 来格式化字符串
 - [ ] 生成器生成格式美化

@@ -86,11 +86,11 @@ int main()
     /* v = {123, 213, 123}; */
     /* v.SetArray({"asda", "123", {213, false}, true}); */
     std::cout << v.Stringify();
-    /* v.SetObject({ */
-    /*     {"asdasda", true}, */
-    /*     {"asdsda", false}, */
-    /*     {"asda", {"asdasd", true}}, */
-    /* }); */
+    v.SetObject({
+        {"asdasda", true},
+        {"asdsda", false},
+        {"asda", tijson::Array({"asdasd", true})},
+    });
     std::cout << v.Stringify();
     /* if (v == "asdasd") {}; */
     /* std::cout << (a == ERROR_TYPE::NO_ERROR) << '\n'; */
@@ -101,15 +101,24 @@ int main()
     std::cout << v.Stringify();
     v = 5;
     std::cout << v4.Stringify();
-    /* v = tijson::Object({ */
-    /*     {"meow-2", "tijosn"}, */
-    /*     {"tijson", true}, */
-    /*     {"asd", tijson::Array({123, 123, 123})}, */
-    /*     {"asdasd", tijson::Object({ */
-    /*                    {"asdasadsas", true}, */
-    /*                    {"meow-2", "tijosn"}, */
-    /*                    {"tijson", true}, */
-    /*                })}, */
-    /* }); */
-    /* std::cout << v.Stringify(); */
+    v = tijson::Object({
+        {"meow-2", "tijosn"},
+        {"tijson", true},
+        {"asd", tijson::Array({123, 123, 123})},
+        {"asdasd", tijson::Object({
+                       {"asdasadsas", true},
+                       {"meow-2", "tijosn"},
+                       {"tijson", true},
+                   })},
+    });
+    std::cout << v.Stringify();
+    v["meow-2"]           = "sadasdadsa";
+    v["meow-2"]           = "sad";
+    v["meow-3"]           = "sad";
+    v["asd"][2]           = "sdasd";
+    v["asdasd"]["meow-2"] = false;
+    for (auto&& [key, val] : v.GetObject()) {
+        std::cout << key << "'s homepage: " << val.Stringify() << std::endl;
+    }
+    std::cout << v.Stringify();
 }
