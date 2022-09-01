@@ -289,6 +289,8 @@ inline Value::Value(Value const& rhs) /*{{{*/
         this->data_ = std::get<double>(rhs.data_);
     else if (rhs.type_ == TYPE::STRING)
         this->data_ = std::get<std::string>(rhs.data_);
+    else if (rhs.type_ == TYPE::INVALID)
+        this->data_ = std::get<PARSE_ERROR>(rhs.data_);
     else
         this->data_ = PARSE_ERROR::NO_ERROR;
 } /*}}}*/
@@ -301,16 +303,16 @@ inline Value& Value::operator=(Value const& rhs) /*{{{*/
 
 inline Value::Value(Value&& rhs) noexcept : data_(std::move(rhs.data_)), type_(rhs.type_) /*{{{*/
 {
-    rhs.data_ = PARSE_ERROR::EXPECT_VALUE;
-    rhs.type_ = TYPE::INVALID;
+    rhs.data_ = PARSE_ERROR::NO_ERROR;
+    rhs.type_ = TYPE::NUL;
 } /*}}}*/
 
 inline Value& Value::operator=(Value&& rhs) noexcept /*{{{*/
 {
     data_     = std::move(rhs.data_);
     type_     = rhs.type_;
-    rhs.data_ = PARSE_ERROR::EXPECT_VALUE;
-    rhs.type_ = TYPE::INVALID;
+    rhs.data_ = PARSE_ERROR::NO_ERROR;
+    rhs.type_ = TYPE::NUL;
     return *this;
 } /*}}}*/
 
