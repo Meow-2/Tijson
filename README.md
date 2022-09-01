@@ -34,7 +34,7 @@
   </p>
 </div>
 
-<!-- [简体中文](https://github.com/Meow-2/Tijson/blob/main/README_zh_CN.md) -->
+[简体中文](https://github.com/Meow-2/Tijson/blob/main/README_zh_CN.md)
 
 <!-- TABLE OF CONTENTS -->
 <details>
