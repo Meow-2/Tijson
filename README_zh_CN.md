@@ -228,7 +228,7 @@ std::cout << a[0].GetString() << '\n';                 //  Meow-2
 std::cout << a[1].GetArray()[0].GetString() << '\n';   //  Hello   World
 
 obj["Null"].SetObject({
-    {"TIJSON", {123, "Tijson"}}   // 显式初始化Object
+    {"TIJSON", {123, "Tijson"}}
 });
 auto& o        = obj["Null"].GetObject();
 auto& o_tijson = o["TIJSON"].GetArray();

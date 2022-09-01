@@ -40,7 +40,7 @@
 <details>
   <summary>Table of Contents</summary>
   <ol>
-    <li><a href="#About Tijson">About Tijson</a></li>
+    <li><a href="#about-tijson">About Tijson</a></li>
     <li>
       <a href="#getting-started">Getting Started</a>
       <ul>
@@ -338,9 +338,9 @@ or run `build_test.sh` directly.
 
 ## TODO
 
-- [√] Optimize Get/Set return type
-- [√] Provide parsing error codes as error handling methods other than exceptions
-- [√] Provide more convenient access (Get/Set) syntactic sugar
+- [x] Optimize Get/Set return type
+- [x] Provide parsing error codes as error handling methods other than exceptions
+- [x] Provide more convenient access (Get/Set) syntactic sugar
 - [ ] Added GetIf as an exception-free Get
 - [ ] Support C++20 Module
 - [ ] Use C++20 std::format to format strings
