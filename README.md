@@ -62,7 +62,7 @@
 
 ## 关于 Tijson
 
-Tijson 是一个基于 C++17 编写的符合标准的递归下降 Json 解析器/生成器, 跨平台(Windows/Linux/OS X), 跨编译器(MSVC/Gcc/Clang), 仅支持 UTF-8 文本, 简单轻量, 易于使用, 并支持多种错误处理方式
+Tijson 是一个基于 C++17 编写的符合标准的递归下降 Json 解析器/生成器, 跨平台(Windows/Linux/OS X), 跨编译器(Gcc/Clang), 仅支持 UTF-8 文本, 简单轻量, 易于使用, 并支持多种错误处理方式
 
 <p align="right"><a href="#readme-top">back to top</a></p>
 
@@ -165,7 +165,7 @@ tijson::Value json_val = tijson::Parse(R"(
 )");
 ```
 
-**使用 Get/Set **
+**使用 Get/Set**
 
 ```Cpp
 
@@ -246,7 +246,7 @@ obj["Null"].SetObject({
         });
 ```
 
-**赋值方式**
+**使用赋值运算符**
 
 Get/Set 直接在`tijson::Value`内部取值/修改,
 也可以使用赋值方式来代替 Set, 但是会有隐式构造和移动的开销
