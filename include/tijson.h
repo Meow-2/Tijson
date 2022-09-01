@@ -248,11 +248,15 @@ public:
     template<T N>
     static Exception ConstructWithErrorCode()
     {
-        std::string_view sv  = __PRETTY_FUNCTION__;
-        auto             pos = sv.find("N = tijson::") + 12;
-        pos                  = sv.find_first_of("::", pos) + 2;
-        auto end_pos         = sv.find_first_of(';', pos);
-        return {N, std::string(sv.substr(pos, end_pos - pos))};
+        constexpr std::string_view sv        = __PRETTY_FUNCTION__;
+        constexpr size_t           pos       = sv.find("N = tijson::") + 12;
+        constexpr size_t           begin_pos = sv.find_first_of("::", pos) + 2;
+#if defined(__clang__)
+        constexpr size_t end_pos = sv.find_first_of(']', begin_pos);
+#elif defined(__GNUC__)
+        constexpr size_t end_pos = sv.find_first_of(';', begin_pos);
+#endif
+        return {N, std::string(sv.substr(begin_pos, end_pos - begin_pos))};
     }
 
 private:
