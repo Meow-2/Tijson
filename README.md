@@ -44,8 +44,11 @@
     <li>
       <a href="#快速上手">快速上手</a>
       <ul>
+        <li><a href="#用例">用例</a></li>
         <li><a href="#解析">解析</a></li>
         <li><a href="#访问">访问</a></li>
+        <li><a href="#生成">生成</a></li>
+        <li><a href="#比较">比较</a></li>
       </ul>
     </li>
     <li><a href="#第三方依赖">第三方依赖</a></li>
@@ -61,7 +64,7 @@
 
 Tijson 是一个基于 C++17 编写的符合标准的递归下降 Json 解析器/生成器, 跨平台(Windows/Linux/OS X), 跨编译器(MSVC/Gcc/Clang), 仅支持 UTF-8 文本, 简单轻量, 易于使用, 并支持多种错误处理方式
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right"><a href="#readme-top">back to top</a></p>
 
 ## 快速上手
 
@@ -69,6 +72,21 @@ Tijson 是一个 header-only 库, 只需要将本仓库中`include`文件夹下�
 
 ```cpp
 #include "tijson.h"
+```
+
+### 用例
+
+```Cpp
+#include "tijson.h"
+#include <iostream>
+int main() {
+    auto root = tijson::Parse(R"({"repo":"Tijson", "author":"Meow-2", "star":0})");
+    root["author"].SetString(root["author"].GetString().substr(0, 4));
+    root["star"] = root["star"].GetNumber()+1;
+    std::cout << root.Stringify()<<'\n';
+    //{ "star":1, "author":"Meow", "repo":"Tijson" }
+    return 0;
+}
 ```
 
 ### 解析
@@ -86,10 +104,10 @@ auto json_val1 = tijson::Parser::Parse(R"({"Meow-2":"Tijson"})");
 
 ```Cpp
 auto json_val = tijson::Parse(R"({"Meow-2":"Tijson"})");
-if (json_val){
-    std::cout << json_val.Stringify() << '\n';
-}else
-    std::cout << json_val.GetParseErrorCode() << '\n';
+if (json_val)
+    std::cout << json_val.Stringify() << '\n';   //{ "Meow-2":"Tijson" }
+else
+    tijson::PARSE_ERROR err = json_val.GetParseErrorCode();
 ```
 
 **错误码定义**
@@ -121,10 +139,10 @@ enum class PARSE_ERROR : size_t
 ```
 try{
     auto json_val = tijson::Parse(R"({"Meow-2":"Tijson"})");
+    std::cout << json_val.Stringify() << '\n';   //{ "Meow-2":"Tijson" }
 }catch(tijson::ParseException e){
     std::cout<<e.what();
 }
-
 ```
 
 抛出异常时, 异常携带的信息为错误码对应的字符串, 与错误码含义一致, 与错误码不同的是, 如果不进行捕获, 会终止程序
@@ -132,7 +150,7 @@ try{
 ### 访问
 
 ```cpp
-tijson::Value json_val2 = tijson::Parse(R"(
+tijson::Value json_val = tijson::Parse(R"(
     {
         "Null" : null,
         "True" : true,
@@ -145,23 +163,160 @@ tijson::Value json_val2 = tijson::Parse(R"(
         }
     }
 )");
-auto&&        obj       = json_val2.GetObject();
-std::cout << "Null:" << obj["Null"].IsNull() << '\n';
-// Null:1
-std::cout << "True:" << obj["True"].GetBool() << '\n';
-// True:1
-std::cout << "False:" << obj["False"].GetBool() << '\n';
-// False:0
-std::cout << "Number:" << obj["Number"].GetNumber() << '\n';
-// Number:3.14159
-std::cout << "String:" << obj["String"].GetString() << '\n';
-// String:tijson
-std::cout << "Array[0][0]:" << obj["Array"].GetArray()[0].GetArray()[0].GetString() << '\n';
-// Hello
-// World
-std::cout << "Object[\"TIJSON\"][0]:"
-          << obj["Object"].GetObject()["TIJSON"].GetArray()[0].GetNumber() << '\n';
-// 123
+```
+
+**使用 Get/Set **
+
+```Cpp
+
+tijson::Value json_val = tijson::Parse(R"(
+    {
+        "Null" : null,
+        "True" : true,
+        "False" : false,
+        "Number" : 314159E-5,
+        "String" : "tijson",
+        "Array" : [ "Meow-2", ["Hello\tWorld"]],
+        "Object": {
+                "TIJSON":[123, "Tijson"]
+        }
+    }
+)");
+
+auto&         obj      = json_val.GetObject();
+std::cout << obj["Null"].IsNull() << '\n';        //  1
+std::cout << obj["True"].GetBool() << '\n';       //  1
+std::cout << obj["False"].GetBool() << '\n';      //  0
+std::cout << obj["Number"].GetNumber() << '\n';   //  3.14159
+std::cout << obj["String"].GetString() << '\n';   //  tijson
+
+auto& arr = obj["Array"].GetArray();
+std::cout << arr[0].GetString() << '\n';                 //  Meow-2
+std::cout << arr[1].GetArray()[0].GetString() << '\n';   //  Hello   World
+
+auto& objj        = obj["Object"].GetObject();
+auto& objj_tijson = objj["TIJSON"].GetArray();
+std::cout << objj_tijson[0].GetNumber() << '\n';   //  123
+std::cout << objj_tijson[1].GetString() << '\n';   //  Tijson
+
+```
+
+从 json 文本中解析出的 json 值被存储在 `tijson::Value` 对象中,
+需要用对应类型的`Get`来取出其值, 但需要注意以下三点:
+
+- `null`类型的 json 值只能`IsNull()`来进行判断, 而不能取出, 同样的,
+  每种 json 类型值都有其对应的`Is方法`
+- `Array`和`Object`实际上是`std::vector<tijson::Value>`和`std::unordermap<std::string, tijson::Value>`
+- Get 错误的类型会抛出`AccessException`异常
+
+同时, 对于任何一种`tijson::Value`, 都可以使用`Set`
+来将其设置为任意类型的`json`值, 比如随意修改上面的`obj["Null"]`
+
+```Cpp
+obj["Null"].SetString("NULL");
+std::cout << obj["Null"].GetString() << '\n';   // NULL
+
+obj["Null"].SetBool(true);
+std::cout << obj["Null"].GetBool() << '\n';   // 1
+
+obj["Null"].SetNumber(123);
+std::cout << obj["Null"].GetNumber() << '\n';   // 123
+
+obj["Null"].SetArray({"Meow-2", {"Hello\tWorld"}});
+auto& a = obj["Null"].GetArray();
+std::cout << a[0].GetString() << '\n';                 //  Meow-2
+std::cout << a[1].GetArray()[0].GetString() << '\n';   //  Hello   World
+
+obj["Null"].SetObject({
+    {"TIJSON", {123, "Tijson"}}   // 显式初始化Object
+});
+auto& o        = obj["Null"].GetObject();
+auto& o_tijson = o["TIJSON"].GetArray();
+std::cout << o_tijson[0].GetNumber() << '\n';   //  123
+std::cout << o_tijson[1].GetString() << '\n';   //  Tijson
+```
+
+在`SetArray()`时, 可以使用`std::initializer_list`的方式, 支持`std::initializer_list`的嵌套
+在`SetObject()`时, 也可以使用`std::initializer_list`的方式, 不支持`std::initializer_list`的嵌套(会被视为`Array`),
+如果想要实现`Oject`嵌套, 需要显式指定为`tijson::Object`, 如
+
+```Cpp
+obj["Null"].SetObject({
+            { "TIJSON", tijson::Object({ {"Meow-2", "Tijson"} }) }
+        });
+```
+
+**赋值方式**
+
+Get/Set 直接在`tijson::Value`内部取值/修改,
+也可以使用赋值方式来代替 Set, 但是会有隐式构造和移动的开销
+
+```Cpp
+
+obj["Null"] = "NULL";
+std::cout << obj["Null"].GetString() << '\n';   // NULL
+
+obj["Null"] = true;
+std::cout << obj["Null"].GetBool() << '\n';   // 1
+
+obj["Null"] = 123;
+std::cout << obj["Null"].GetNumber() << '\n';   // 123
+
+obj["Null"] = {"Meow-2", {"Hello\tWorld"}};
+auto& a = obj["Null"].GetArray();
+std::cout << a[0].GetString() << '\n';                 //  Meow-2
+std::cout << a[1].GetArray()[0].GetString() << '\n';   //  Hello   World
+
+obj["Null"] = tijson::Object({
+    {"TIJSON", {123, "Tijson"}}   // 显式初始化Object
+});
+auto& o        = obj["Null"].GetObject();
+auto& o_tijson = o["TIJSON"].GetArray();
+std::cout << o_tijson[0].GetNumber() << '\n';   //  123
+std::cout << o_tijson[1].GetString() << '\n';   //  Tijson
+
+```
+
+赋值`tijson::Object`时, 不支持`std::initializer_list`, 会被认为是`Array`
+
+### 生成
+
+对于任意类型的 json 值都可以使用`Stringify()`成员函数来生成紧凑的字符串
+
+```Cpp
+tijson::Value me(tijson::Object{});
+me["name"]      = "Meow-2";
+me["age"]       = 24;
+me["interest"]  = {"Animation", "Coding", "Open Source"};
+me["learning"]  = {"C++", "Linux", "Vim"};
+me[""] = Value();       //默认初始化为null
+me["this repo"] = tijson::Object({
+    {"name", "Tijson"},
+    {"star", 0},
+    {"url", "https://github.com/Meow-2/Tijson"},
+});
+std::cout << me.Stringify() << '\n';
+// { "this repo":{ "url":"https:\/\/github.com\/Meow-2\/Tijson", "star":0, "name":"Tijson" }, "remark":null, "learning":[ "C++", "Lin
+// ux", "Vim" ], "interest":[ "Animation", "Coding", "Open Source" ], "age":24, "name":"Meow-2" }
+```
+
+### 比较
+
+`tijson::Value`类型只支持同类型的比较(==, !=), 当两者代表的 json 值相同时,
+则认为它们是一样的
+
+同时`tijson::Value`支持自动转型为`bool`,
+且只有当`tijson::Value::type_`为`tijson::Value::TYPE::INVALID`时为 false,
+因此可以用来检查 json 解析是否成功
+
+```cpp
+auto json_val = tijson::Parse(R"({"Meow-2":"Tijson"})");
+if (json_val){
+    // 解析成功则执行
+}
+if (!json_val){
+    // 解析不成功则执行
+}
 ```
 
 ## 第三方依赖
@@ -200,20 +355,20 @@ git submodule update --init \
 - [ ] 加入 nativejson-benchmark 测试, 并优化性能
 - [ ] ...
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right"><a href="#readme-top">back to top</a></p>
 
 ## 参考
 
 - [从零开始的 JSON 库教程](https://github.com/miloyip/json-tutorial)
 - [ECMA-404](https://www.ecma-international.org/publications-and-standards/standards/ecma-404/)
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right"><a href="#readme-top">back to top</a></p>
 
 ## License
 
 MIT License
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+<p align="right"><a href="#readme-top">back to top</a></p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->

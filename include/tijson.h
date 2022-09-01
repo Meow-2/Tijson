@@ -6,6 +6,7 @@
 #include <cmath>
 #include <codecvt>
 #include <cstdio>
+#include <initializer_list>
 #include <locale>
 #include <memory>
 #include <string>
@@ -90,8 +91,11 @@ public:
     Value(Array const& arr) : data_(std::make_unique<Array>(arr)), type_(TYPE::ARRAY){};
     Value(Array&& arr) : data_(std::make_unique<Array>(std::move(arr))), type_(TYPE::ARRAY){};
 
-    Value(Object const& arr) : data_(std::make_unique<Object>(arr)), type_(TYPE::OBJECT){};
-    Value(Object&& arr) : data_(std::make_unique<Object>(std::move(arr))), type_(TYPE::OBJECT){};
+    Value(Object const& obj) : data_(std::make_unique<Object>(obj)), type_(TYPE::OBJECT){};
+    Value(Object&& obj) : data_(std::make_unique<Object>(std::move(obj))), type_(TYPE::OBJECT){};
+
+    Value(std::initializer_list<Value> l)
+        : data_(std::make_unique<Array>(Array(l))), type_(TYPE::ARRAY){};
 
     // deep copy
     Value(Value const& rhs);
@@ -306,7 +310,6 @@ inline Value& Value::operator=(Value&& rhs) noexcept /*{{{*/
     return *this;
 } /*}}}*/
 
-// TODO: Fix variant bad access of GetObject[""], GetArray[-1]
 inline Value::TYPE Value::GetType() const /*{{{*/
 {
     return type_;
@@ -497,15 +500,15 @@ inline std::string Value::StringifyArray() const /*{{{*/
 
 inline std::string Value::StringifyObject() const /*{{{*/
 {
-    std::string result = "{\n";
+    std::string result = "{ ";
     int         i      = 0;
     for (auto const& [key, val] : *(std::get<ObjectUPtr>(data_))) {
         if (i > 0)
-            result += ",\n";
+            result += ", ";
         result += StringifyString(key) + ':' + val.Stringify();
         i++;
     }
-    result += "\n}";
+    result += " }";
     return result;
 } /*}}}*/
 
@@ -519,7 +522,9 @@ inline bool Value::operator==(Value const& rhs) const /*{{{*/
 {
     if (type_ != rhs.type_)
         return false;
-    if (type_ == TYPE::TRUE || type_ == TYPE::FALSE || type_ == TYPE::NUL || type_ == TYPE::INVALID)
+    if (type_ == TYPE::INVALID)
+        return std::get<PARSE_ERROR>(data_) == std::get<PARSE_ERROR>(rhs.data_);
+    if (type_ == TYPE::TRUE || type_ == TYPE::FALSE || type_ == TYPE::NUL)
         return true;
     if (type_ == TYPE::STRING || type_ == TYPE::NUMBER)
         return data_ == rhs.data_;
