@@ -30,51 +30,51 @@
   <h3 align="center">Tijson</h3>
 
   <p align="center">
-    An easy-to-use json parser/generator written in modern cpp
+    一个用现代cpp编写的易于使用的json解析器/生成器
   </p>
 </div>
 
-<!-- [简体中文](https://github.com/Meow-2/Tijson/blob/main/README_zh_CN.md) -->
+<!-- [English](https://github.com/Meow-2/Tijson/blob/main/README.md) -->
 
 <!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
   <ol>
-    <li><a href="#About Tijson">About Tijson</a></li>
+    <li><a href="#关于Tijson">关于Tijson</a></li>
     <li>
-      <a href="#getting-started">Getting Started</a>
+      <a href="#快速上手">快速上手</a>
       <ul>
-        <li><a href="#Example">Example</a></li>
-        <li><a href="#Parse">Parse</a></li>
-        <li><a href="#Access">Access</a></li>
-        <li><a href="#Serialization">Serialization</a></li>
-        <li><a href="#Compare">Compare</a></li>
+        <li><a href="#用例">用例</a></li>
+        <li><a href="#解析">解析</a></li>
+        <li><a href="#访问">访问</a></li>
+        <li><a href="#生成">生成</a></li>
+        <li><a href="#比较">比较</a></li>
       </ul>
     </li>
-    <li><a href="#Prerequisites">Prerequisites</a></li>
+    <li><a href="#第三方依赖">第三方依赖</a></li>
     <li><a href="#TODO">TODO</a></li>
-    <li><a href="#Acknowledgments">Acknowledgments</a></li>
+    <li><a href="#参考">参考</a></li>
     <li><a href="#License">License</a></li>
   </ol>
 </details>
 
 <!-- ABOUT THE PROJECT -->
 
-## About Tijson
+## 关于 Tijson
 
-Tijson is a standard recursive descent JSON parser / generator written based on C++ 17.Cross platform (Windows / Linux / OS X) and cross compiler (GCC / Clang). It only supports UTF-8 text, aims to be simple ,lightweight and easy to use, and supports a variety of error handling methods.
+Tijson 是一个基于 C++17 编写的符合标准的递归下降 Json 解析器/生成器, 跨平台(Windows/Linux/OS X), 跨编译器(Gcc/Clang), 仅支持 UTF-8 文本, 简单轻量, 易于使用, 并支持多种错误处理方式
 
 <p align="right"><a href="#readme-top">back to top</a></p>
 
-## Getting Started
+## 快速上手
 
-Tijson is a header-only library, you only need to copy the `tijson.h` in the `include` folder in this repository to your project directory and include it as a header file to use it.
+Tijson 是一个 header-only 库, 只需要将本仓库中`include`文件夹下的`tijson.h`拷贝到项目目录下作为头文件引入即可使用
 
 ```cpp
 #include "tijson.h"
 ```
 
-### Example
+### 用例
 
 ```Cpp
 #include "tijson.h"
@@ -89,18 +89,18 @@ int main() {
 }
 ```
 
-### Parse
+### 解析
 
 ```cpp
-// two methods
+// 两种方式
 auto json_val0 = tijson::Parse(R"({"Meow-2":"Tijson"})");
 auto json_val1 = tijson::Parser::Parse(R"({"Meow-2":"Tijson"})");
-// auto is tijson::Value, json_val0 is the same as json_val1
+// auto 为 tijson::Value, 若解析正确, json_val0, json_val1 完全相同
 ```
 
-The difference between the above two methods is that in the first method, when the parsing fails, the error code will be written into the Value, and the program continues to execute, while the second method directly throws an exception and the program terminates.
+以上两种方式的区别在于方式一在解析失败时, 将错误码写入 Value 中, 程序继续执行, 而方式二直接抛出异常, 程序中止
 
-**Example of Error Code**
+**错误码用例**
 
 ```Cpp
 auto json_val = tijson::Parse(R"({"Meow-2":"Tijson"})");
@@ -110,30 +110,31 @@ else
     tijson::PARSE_ERROR err = json_val.GetParseErrorCode();
 ```
 
-**The Definition of Parse Error Code**
+**错误码定义**
 
 ```
 enum class PARSE_ERROR : size_t
 {
-    NO_ERROR = 0,
-    EXPECT_VALUE,
-    INVALID_VALUE,
-    ROOT_NOT_SINGULAR,
-    NUMBER_TOO_BIG,
-    MISS_QUOTATION_MARK,
-    INVALID_STRING_ESCAPE,
-    INVALID_STRING_CHAR,
-    INVALID_UNICODE_HEX,
-    INVALID_UNICODE_SURROGATE,
-    MISS_COMMA_OR_SQUARE_BRACKET,
-    MISS_KEY,
-    MISS_COLON,
-    MISS_COMMA_OR_CURLY_BRACKET
+    NO_ERROR = 0,                   // 没有错误
+    EXPECT_VALUE,                   // 缺少Json值
+    INVALID_VALUE,                  // 非法的 Null、False、True 或 Number
+    ROOT_NOT_SINGULAR,              // 多个Json值
+    NUMBER_TOO_BIG,                 // Number: 数字超过了 double 的最大精度
+    MISS_QUOTATION_MARK,            // String: 引号缺失
+    INVALID_STRING_ESCAPE,          // String: 非法转义
+    INVALID_STRING_CHAR,            // String: 非法字符
+    INVALID_UNICODE_HEX,            // String: 非法的 Unicode 转义,
+                                    // \u后不足四个十六进制数
+    INVALID_UNICODE_SURROGATE,      // String: 非法的低代理项
+    MISS_COMMA_OR_SQUARE_BRACKET,   // Array: 缺少','或']'
+    MISS_KEY,                       // Object: 缺少Key
+    MISS_COLON,                     // Object: 缺少':'
+    MISS_COMMA_OR_CURLY_BRACKET     // Object: 缺少','或'}'
 };
 
 ```
 
-**Example of Exception**
+**异常用例**
 
 ```
 try{
@@ -144,9 +145,9 @@ try{
 }
 ```
 
-When an exception is thrown, the information carried by the exception is the string corresponding to the error code, which has the same meaning as the error code. Unlike the error code, if it is not caught, the program will be terminated.
+抛出异常时, 异常携带的信息为错误码对应的字符串, 与错误码含义一致, 与错误码不同的是, 如果不进行捕获, 会终止程序
 
-### Access
+### 访问
 
 ```cpp
 tijson::Value json_val = tijson::Parse(R"(
@@ -164,7 +165,7 @@ tijson::Value json_val = tijson::Parse(R"(
 )");
 ```
 
-**Example of Get/Set**
+**使用 Get/Set**
 
 ```Cpp
 
@@ -200,14 +201,16 @@ std::cout << objj_tijson[1].GetString() << '\n';   //  Tijson
 
 ```
 
-The json value parsed from the json text is stored in the `tijson::Value` object.You need to use `Get` of the corresponding type to get its value, but you need to pay attention to the following three points:
+从 json 文本中解析出的 json 值被存储在 `tijson::Value` 对象中,
+需要用对应类型的`Get`来取出其值, 但需要注意以下三点:
 
-The json value of `null` type can only be checked by `IsNull()`, but cannot be gotten. Similarly, each json type value has its corresponding `Is` methods
+- `null`类型的 json 值只能`IsNull()`来进行判断, 而不能取出, 同样的,
+  每种 json 类型值都有其对应的`Is方法`
+- `Array`和`Object`实际上是`std::vector<tijson::Value>`和`std::unordermap<std::string, tijson::Value>`
+- Get 错误的类型会抛出`AccessException`异常
 
-- `Array` and `Object` are actually `std::vector<tijson::Value>` and `std::unordermap<std::string, tijson::Value>`
-- `Get` with the wrong type will throw an `AccessException` exception
-
-For any kind of `tijson::Value`, you can use `Set` to set it to any type of `json` value, such as freely modifying the above `obj["Null"]`.
+同时, 对于任何一种`tijson::Value`, 都可以使用`Set`
+来将其设置为任意类型的`json`值, 比如随意修改上面的`obj["Null"]`
 
 ```Cpp
 obj["Null"].SetString("NULL");
@@ -225,7 +228,7 @@ std::cout << a[0].GetString() << '\n';                 //  Meow-2
 std::cout << a[1].GetArray()[0].GetString() << '\n';   //  Hello   World
 
 obj["Null"].SetObject({
-    {"TIJSON", {123, "Tijson"}}
+    {"TIJSON", {123, "Tijson"}}   // 显式初始化Object
 });
 auto& o        = obj["Null"].GetObject();
 auto& o_tijson = o["TIJSON"].GetArray();
@@ -233,9 +236,9 @@ std::cout << o_tijson[0].GetNumber() << '\n';   //  123
 std::cout << o_tijson[1].GetString() << '\n';   //  Tijson
 ```
 
-For `SetArray()`, you can use `std::initializer_list` method and it supports nesting of `std::initializer_list`.
-For `SetObject()`, you can also use the `std::initializer_list` method, the nesting of `std::initializer_list` is not supported (it will be regarded as `Array`).
-If you want to implement `Oject` nesting, you need to explicitly specify it as `tijson::Object`, such as:
+在`SetArray()`时, 可以使用`std::initializer_list`的方式, 支持`std::initializer_list`的嵌套
+在`SetObject()`时, 也可以使用`std::initializer_list`的方式, 不支持`std::initializer_list`的嵌套(会被视为`Array`),
+如果想要实现`Oject`嵌套, 需要显式指定为`tijson::Object`, 如
 
 ```Cpp
 obj["Null"].SetObject({
@@ -243,9 +246,10 @@ obj["Null"].SetObject({
         });
 ```
 
-**Example of Assignment Operator**
+**使用赋值运算符**
 
-Get/Set directly accesses/modifies inside `tojson::Value`, and can also use assignment instead of Set, but there will be overhead of implicit construction and movement.
+Get/Set 直接在`tijson::Value`内部取值/修改,
+也可以使用赋值方式来代替 Set, 但是会有隐式构造和移动的开销
 
 ```Cpp
 
@@ -264,7 +268,7 @@ std::cout << a[0].GetString() << '\n';                 //  Meow-2
 std::cout << a[1].GetArray()[0].GetString() << '\n';   //  Hello   World
 
 obj["Null"] = tijson::Object({
-    {"TIJSON", {123, "Tijson"}}   // Explicit Initialize Object
+    {"TIJSON", {123, "Tijson"}}   // 显式初始化Object
 });
 auto& o        = obj["Null"].GetObject();
 auto& o_tijson = o["TIJSON"].GetArray();
@@ -273,11 +277,11 @@ std::cout << o_tijson[1].GetString() << '\n';   //  Tijson
 
 ```
 
-When use assignment operator to assignment `tijson::Object`, `std::initializer_list` is not supported, because it will be regarded as `Array`.
+赋值`tijson::Object`时, 不支持`std::initializer_list`, 会被认为是`Array`
 
-### Serialization
+### 生成
 
-The `Stringify()` member function can be used to generate compact strings for any type of json value.
+对于任意类型的 json 值都可以使用`Stringify()`成员函数来生成紧凑的字符串
 
 ```Cpp
 tijson::Value me(tijson::Object{});
@@ -285,7 +289,7 @@ me["name"]      = "Meow-2";
 me["age"]       = 24;
 me["interest"]  = {"Animation", "Coding", "Open Source"};
 me["learning"]  = {"C++", "Linux", "Vim"};
-me[""] = Value();       //default initialize as `null`
+me[""] = Value();       //默认初始化为null
 me["this repo"] = tijson::Object({
     {"name", "Tijson"},
     {"star", 0},
@@ -296,32 +300,35 @@ std::cout << me.Stringify() << '\n';
 // ux", "Vim" ], "interest":[ "Animation", "Coding", "Open Source" ], "age":24, "name":"Meow-2" }
 ```
 
-### Compare
+### 比较
 
-The `json::Value` type only supports the same type of comparison (==, !=), when both represent the same json value, they are considered to be the same.
+`tijson::Value`类型只支持同类型的比较(==, !=), 当两者代表的 json 值相同时,
+则认为它们是一样的
 
-At the same time, `tijson::Value` supports automatic conversion to `bool`, and it is false only when `tijson::Value::type_` is `tijson::Value::TYPE::INVALID`, so it can be used to check json Whether the parsing was successful.
+同时`tijson::Value`支持自动转型为`bool`,
+且只有当`tijson::Value::type_`为`tijson::Value::TYPE::INVALID`时为 false,
+因此可以用来检查 json 解析是否成功
 
 ```cpp
 auto json_val = tijson::Parse(R"({"Meow-2":"Tijson"})");
 if (json_val){
-    // parse succeeds
+    // 解析成功则执行
 }
 if (!json_val){
-    // parse fails
+    // 解析不成功则执行
 }
 ```
 
-## Prerequisites
+## 第三方依赖
 
-Tojson does not depend on third-party libraries, only the standard library and C++17 support are required.
+Tijson 不依赖于第三方库, 仅仅只需要标准库和 C++17 支持
 
-If you want to run the test cases in the `test` folder, you need to have:
+如果想要运行`test`文件夹下的测试用例, 需要
 
 - magic_enum
 - gtest
 
-This project supports `vcpkg Manifest`, if you want to install the above dependencies automatically, just clone this project and then:
+本项目支持`vcpkg Manifest`, 若想要自动安装上述依赖, 只需在克隆本项目后
 
 ```Cpp
 git submodule update --init \
@@ -330,7 +337,7 @@ git submodule update --init \
 && cmake --build build \
 ```
 
-or run `build_test.sh` directly.
+或者直接使用`build_test.sh`
 
 ```Cpp
 ./build_test.sh
@@ -338,21 +345,21 @@ or run `build_test.sh` directly.
 
 ## TODO
 
-- [√] Optimize Get/Set return type
-- [√] Provide parsing error codes as error handling methods other than exceptions
-- [√] Provide more convenient access (Get/Set) syntactic sugar
-- [ ] Added GetIf as an exception-free Get
-- [ ] Support C++20 Module
-- [ ] Use C++20 std::format to format strings
-- [ ] Generator generated format beautification
-- [ ] Added nativejson-benchmark test and optimized performance
+- [x] 优化 Get/Set 返回类型
+- [x] 提供解析错误码作为异常之外的错误处理方式
+- [x] 提供更加便捷的访问(Get/Set)语法糖
+- [ ] 添加 GetIf 作为无异常的 Get
+- [ ] 支持 C++20 Module
+- [ ] 使用 C++20 std::format 来格式化字符串
+- [ ] 生成器生成格式美化
+- [ ] 加入 nativejson-benchmark 测试, 并优化性能
 - [ ] ...
 
 <p align="right"><a href="#readme-top">back to top</a></p>
 
 ## 参考
 
-- [JSON library tutorial from scratch](https://github.com/miloyip/json-tutorial)
+- [从零开始的 JSON 库教程](https://github.com/miloyip/json-tutorial)
 - [ECMA-404](https://www.ecma-international.org/publications-and-standards/standards/ecma-404/)
 
 <p align="right"><a href="#readme-top">back to top</a></p>
